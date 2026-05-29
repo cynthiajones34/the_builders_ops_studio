@@ -542,6 +542,84 @@
     margin-bottom: 0.75rem;
   }
   .form-success p { font-size: 0.88rem; color: #7A7165; line-height: 1.8; }
+
+  /* NAV TOGGLE (hidden on desktop) */
+  .nav-toggle { display: none; }
+
+  /* ===== MOBILE / TABLET ===== */
+  @media (max-width: 768px) {
+
+    /* Nav */
+    nav { padding: 0.75rem 1.5rem; }
+    .nav-toggle {
+      display: block;
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      color: var(--deep);
+      cursor: pointer;
+      z-index: 200;
+      position: relative;
+      line-height: 1;
+    }
+    .nav-links {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--warm-white);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      z-index: 150;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links a { font-size: 1rem; }
+
+    /* Hero */
+    .hero { grid-template-columns: 1fr; padding-top: 70px; }
+    .hero-left { padding: 3rem 1.5rem; }
+    .hero-right { min-height: 260px; }
+    .hero-stat-bar { position: static; }
+
+    /* Intro band */
+    .intro-band { flex-direction: column; padding: 3rem 1.5rem; gap: 2rem; }
+    .intro-quote { font-size: 1.4rem; }
+
+    /* Sections */
+    section { padding: 4rem 1.5rem; }
+    .about { padding: 4rem 1.5rem; }
+
+    /* Services */
+    .services-grid { grid-template-columns: 1fr; }
+
+    /* Process */
+    .process-steps { grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2.5rem; }
+    .process-step::after { display: none; }
+
+    /* CTA */
+    .cta { padding: 5rem 1.5rem; }
+    .cta-buttons { flex-direction: column; align-items: center; gap: 1rem; }
+    .btn-outline { margin-left: 0; }
+
+    /* Footer */
+    footer {
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+    .footer-links { flex-wrap: wrap; justify-content: center; gap: 1rem; }
+
+    /* Modal / Form */
+    .modal-box { padding: 2rem 1.25rem; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 480px) {
+    .process-steps { grid-template-columns: 1fr; }
+    .nav-logo img { height: 60px; }
+  }
 </style>
 </head>
 <body>
@@ -549,12 +627,13 @@
 <!-- NAV -->
 <nav>
   <a class="nav-logo" href="#"><img src="bos-logo.png" alt="The Builders' Ops Studio"></a>
-  <ul class="nav-links">
+  <ul class="nav-links" id="nav-links">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
     <li><a href="#process">Process</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">&#9776;</button>
 </nav>
 
 <!-- HERO -->
@@ -801,6 +880,18 @@
 </div>
 
 <script>
+// Mobile nav toggle
+(function() {
+  var toggle = document.getElementById('nav-toggle');
+  var links = document.getElementById('nav-links');
+  toggle.addEventListener('click', function() {
+    links.classList.toggle('open');
+  });
+  links.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() { links.classList.remove('open'); });
+  });
+})();
+
 function closeModal() {
   document.getElementById('contact-modal').style.display = 'none';
   document.getElementById('form-panel').style.display = 'block';
