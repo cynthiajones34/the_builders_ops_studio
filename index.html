@@ -3,8 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cynthia Jones | Operations Consulting</title>
+<title>The Builders' Ops Studio | Atlanta Operations Consulting</title>
+<meta name="description" content="The Builders' Ops Studio — operations consulting for women entrepreneurs in Atlanta, GA and nationwide. Systems, process design, and strategy by Cynthia Jones.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.thebuildersopsstudio.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.thebuildersopsstudio.com/">
+<meta property="og:title" content="The Builders' Ops Studio | Atlanta Operations Consulting">
+<meta property="og:description" content="Operations consulting for women entrepreneurs in Atlanta, GA and nationwide. Systems, process design, and strategy by Cynthia Jones.">
+<meta property="og:image" content="https://www.thebuildersopsstudio.com/bos-logo.png">
+<meta property="og:site_name" content="The Builders' Ops Studio">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Builders' Ops Studio | Atlanta Operations Consulting">
+<meta name="twitter:description" content="Operations consulting for women entrepreneurs in Atlanta, GA and nationwide. Systems, process design, and strategy by Cynthia Jones.">
+<meta name="twitter:image" content="https://www.thebuildersopsstudio.com/bos-logo.png">
 <link rel="icon" type="image/png" href="favicon.png" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "The Builders' Ops Studio",
+  "url": "https://www.thebuildersopsstudio.com/",
+  "email": "cynthiajones34@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Atlanta",
+    "addressRegion": "GA",
+    "addressCountry": "US"
+  },
+  "areaServed": "Nationwide",
+  "founder": {
+    "@type": "Person",
+    "name": "Cynthia Jones"
+  }
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
 <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
@@ -357,6 +390,51 @@
     line-height: 1.8;
   }
 
+  /* RECOMMENDATIONS */
+  .recommendations { background: var(--cream); }
+  .rec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 4rem;
+  }
+  .rec-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  .rec-photo {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--sand);
+  }
+  .rec-quote {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--deep);
+    line-height: 1.85;
+    margin: 0;
+    border-left: 2px solid var(--clay);
+    padding-left: 1.25rem;
+  }
+  .rec-attribution { display: flex; flex-direction: column; gap: 0.25rem; }
+  .rec-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--deep);
+  }
+  .rec-role {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   /* CTA */
   .cta {
     background: var(--cream);
@@ -593,6 +671,9 @@
     /* Services */
     .services-grid { grid-template-columns: 1fr; }
 
+    /* Recommendations */
+    .rec-grid { grid-template-columns: 1fr; }
+
     /* Process */
     .process-steps { grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2.5rem; }
     .process-step::after { display: none; }
@@ -623,24 +704,41 @@
     .process-steps { grid-template-columns: 1fr; }
     .nav-logo img { height: 100px; }
   }
+
+  /* ACCESSIBILITY UTILITIES */
+  .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  .skip-link { position:absolute; top:-40px; left:0; background:#7B5E3E; color:#fff; padding:0.5rem 1rem; z-index:200; text-decoration:none; font-size:0.875rem; }
+  .skip-link:focus { top:0; }
+
+  /* TOUCH TARGETS — ensure min 44px on interactive elements */
+  @media (max-width: 768px) {
+    .nav-links a { min-height: 44px; display: flex; align-items: center; }
+    .nav-toggle { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .btn-primary, .btn-outline { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .form-submit { min-height: 44px; }
+  }
 </style>
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="#"><img src="bos-logo.png" alt="The Builders' Ops Studio"></a>
-  <ul class="nav-links" id="nav-links">
+  <a class="nav-logo" href="#"><img src="bos-logo.png" alt="The Builders' Ops Studio logo"></a>
+  <ul class="nav-links" id="nav-links" role="list">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
     <li><a href="#process">Process</a></li>
+    <li><a href="#recommendations">Recommendations</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
-  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">&#9776;</button>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-links">&#9776;</button>
 </nav>
 
 <!-- HERO -->
-<section class="hero">
+<section id="main-content" class="hero">
   <div class="hero-left">
     <p class="hero-eyebrow">Women's Small Business Consulting</p>
     <h1 class="hero-title">
@@ -784,6 +882,45 @@
   </div>
 </section>
 
+<!-- RECOMMENDATIONS -->
+<section id="recommendations" class="recommendations">
+  <p class="section-eyebrow">What Others Say</p>
+  <h2 class="section-title">Recommendations</h2>
+  <div class="divider"></div>
+  <div class="rec-grid">
+    <div class="rec-card">
+      <img src="images/mari-nazary.png" alt="Mari Nazary" class="rec-photo">
+      <blockquote class="rec-quote">
+        "I've had the pleasure of working with Cynthia for years, and she is remarkable at what she does.
+        I once watched her transform a complicated, people-heavy process into a seamless system that
+        now runs quietly in the background, powered by technology. That's her superpower: she finds
+        the simple structure hiding inside the chaos and brings it to life. For any woman entrepreneur
+        ready to scale with confidence, Cynthia is an extraordinary partner."
+      </blockquote>
+      <div class="rec-attribution">
+        <span class="rec-name">Mari Nazary</span>
+        <span class="rec-role">EdTech Executive and former CEO</span>
+      </div>
+    </div>
+    <div class="rec-card">
+      <img src="images/josh-knell.jpeg" alt="Josh Knell" class="rec-photo">
+      <blockquote class="rec-quote">
+        "Cynthia is a world-class operator. She does the kind of work most people avoid: the ambiguous,
+        difficult, high-stakes problems where execution matters more than talk. She brings clarity to
+        chaos, follows through relentlessly, and earns trust by delivering results. Any organization
+        would be fortunate to have her in the driver's seat. What really sets Cynthia apart? Her heart.
+        She has focused her life to support others in her community. If Cynthia didn't have to work
+        another day in her life, she would be trying to support a local business through operational
+        excellence. She is truly rare in this world and I am lucky to have crossed paths with her."
+      </blockquote>
+      <div class="rec-attribution">
+        <span class="rec-name">Josh Knell</span>
+        <span class="rec-role">EdTech Executive and Engineer</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- CTA -->
 <section id="contact" class="cta">
   <p class="section-eyebrow">Ready to Begin?</p>
@@ -800,22 +937,25 @@
 
 <!-- FOOTER -->
 <footer>
+  <span class="footer-logo">The Builders' Ops Studio</span>
   <ul class="footer-links">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
     <li><a href="#process">Process</a></li>
+    <li><a href="#recommendations">Recommendations</a></li>
     <li><a href="#contact">Contact</a></li>
+    <li><a href="mailto:cynthiajones34@gmail.com" aria-label="Email Cynthia Jones at The Builders' Ops Studio">cynthiajones34@gmail.com</a></li>
   </ul>
-  <span class="footer-logo">&copy; 2026 The Builders' Ops Studio</span>
+  <span class="footer-logo">&copy; 2026 The Builders' Ops Studio &mdash; Atlanta, GA</span>
 </footer>
 
 <!-- CONTACT MODAL -->
-<div id="contact-modal" onclick="if(event.target===this)closeModal()">
+<div id="contact-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <button class="modal-close" onclick="closeModal()" aria-label="Close contact form">&times;</button>
     <div id="form-panel">
       <p class="modal-eyebrow">Get In Touch</p>
-      <h2 class="modal-title">Send a Message</h2>
+      <h2 class="modal-title" id="modal-title">Send a Message</h2>
       <p class="modal-sub">Fill out the form below and we'll get back to you within one business day.</p>
       <div class="modal-notice">
         <span>&#128336;</span>
@@ -874,7 +1014,7 @@
         <button type="submit" class="form-submit" id="submit-btn">Send Message &rarr;</button>
       </form>
     </div>
-    <div class="form-success" id="success-panel">
+    <div class="form-success" id="success-panel" role="alert" aria-live="polite">
       <span class="form-success-icon">&#127807;</span>
       <h3>Message sent successfully!</h3>
       <p>Thank you for reaching out.<br>We'll respond within 24 business hours.</p>
@@ -888,10 +1028,16 @@
   var toggle = document.getElementById('nav-toggle');
   var links = document.getElementById('nav-links');
   toggle.addEventListener('click', function() {
-    links.classList.toggle('open');
+    var isOpen = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    toggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
   });
   links.querySelectorAll('a').forEach(function(a) {
-    a.addEventListener('click', function() { links.classList.remove('open'); });
+    a.addEventListener('click', function() {
+      links.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Open navigation menu');
+    });
   });
 })();
 
