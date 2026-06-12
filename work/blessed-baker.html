@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Blessed Baker and Son Case Study | The Builders' Ops Studio</title>
+<meta name="description" content="How The Builders' Ops Studio built a fully custom ordering platform for a Georgia micro-bakery: online ordering, admin dashboard, SMS standing orders, and email marketing.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.thebuildersopsstudio.com/work/blessed-baker.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Blessed Baker and Son Case Study">
+<meta property="og:description" content="A fully custom, live ordering platform for a Georgia micro-bakery. No third-party apps, no monthly subscription.">
+<meta property="og:image" content="https://www.thebuildersopsstudio.com/bos-logo.png">
+<link rel="icon" type="image/png" href="../favicon.png" />
+<script>document.documentElement.classList.add('js');</script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FEFCF9;
+    --sand: #E8E0D4;
+    --clay: #C4A882;
+    --sienna: #9A6E4A;
+    --deep: #3D2B1A;
+    --charcoal: #2C2C28;
+    --muted: #7A7165;
+    --accent: #7B5E3E;
+    --green: #5C7A52;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--warm-white);
+    color: var(--charcoal);
+    font-weight: 300;
+    line-height: 1.7;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4rem;
+    background: rgba(254,252,249,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--sand);
+  }
+  .nav-logo { text-decoration: none; display: flex; align-items: center; }
+  .nav-logo img { height: 140px; width: auto; display: block; }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-toggle { display: none; }
+
+  /* SECTION BASE */
+  section { padding: 6rem 6rem; }
+  .section-eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sienna);
+    margin-bottom: 1.25rem;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 3vw, 3rem);
+    font-weight: 300;
+    color: var(--deep);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+  }
+  .section-title em { font-style: italic; color: var(--sienna); }
+  .divider { width: 40px; height: 1px; background: var(--clay); margin-bottom: 2.5rem; }
+  .section-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: 620px;
+    line-height: 1.9;
+  }
+  .btn-primary {
+    display: inline-block;
+    padding: 1rem 2.5rem;
+    background: var(--deep);
+    color: var(--cream);
+    text-decoration: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--accent); }
+
+  /* HERO */
+  .cs-hero {
+    min-height: 70vh;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 160px;
+  }
+  .cs-hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.6rem, 5vw, 4.5rem);
+    font-weight: 300;
+    line-height: 1.1;
+    color: var(--deep);
+    margin-bottom: 1.5rem;
+    max-width: 800px;
+  }
+  .cs-hero-title em { font-style: italic; color: var(--sienna); }
+  .cs-hero-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.9; margin-bottom: 3rem; }
+  .cs-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .cs-meta span {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--sand);
+    background: var(--warm-white);
+    padding: 0.4rem 0.85rem;
+  }
+
+  /* STAT BAND */
+  .stat-band {
+    background: var(--deep);
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 0;
+  }
+  .stat-cell { padding: 2.5rem 2rem; border-right: 1px solid rgba(255,255,255,0.08); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.6rem;
+    font-weight: 300;
+    display: block;
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--clay);
+    display: block;
+    margin-top: 0.4rem;
+  }
+
+  /* TWO PATHS */
+  .paths { background: var(--warm-white); }
+  .paths-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 3rem; }
+  .path-card { background: var(--cream); padding: 2.5rem 2rem; }
+  .path-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem;
+    color: var(--clay);
+    display: block;
+    margin-bottom: 1.25rem;
+  }
+  .path-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--deep);
+    margin-bottom: 0.75rem;
+  }
+  .path-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.8; }
+  .path-list { list-style: none; margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .path-list li {
+    display: flex; gap: 0.85rem; align-items: baseline;
+    font-size: 0.82rem; color: var(--charcoal);
+  }
+  .path-list li::before { content: ''; width: 16px; height: 1px; background: var(--clay); flex-shrink: 0; transform: translateY(-4px); }
+
+  /* DEMO FRAMES */
+  .demo-section { background: var(--cream); }
+  .demo-split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+  .demo-copy h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--deep);
+    margin-bottom: 1rem;
+  }
+  .demo-copy p { font-size: 0.88rem; color: var(--muted); line-height: 1.9; margin-bottom: 1.25rem; }
+
+  .browser {
+    background: var(--warm-white);
+    border: 1px solid var(--sand);
+    box-shadow: 0 30px 60px -30px rgba(61,43,26,0.25);
+  }
+  .browser-bar {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--sand);
+    background: var(--cream);
+  }
+  .browser-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sand); }
+  .browser-url {
+    margin-left: 0.75rem;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    background: var(--warm-white);
+    border: 1px solid var(--sand);
+    padding: 0.2rem 0.9rem;
+    border-radius: 20px;
+  }
+  .browser-body { padding: 1.5rem; }
+
+  /* Order form demo */
+  .menu-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--sand);
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    background: var(--warm-white);
+  }
+  .menu-item .price { color: var(--sienna); font-size: 0.78rem; }
+  .menu-item .add {
+    width: 22px; height: 22px;
+    border: 1px solid var(--clay);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; color: var(--sienna);
+    margin-left: 0.75rem; flex-shrink: 0;
+  }
+  .menu-item.added { background: var(--cream); border-color: var(--clay); }
+  .menu-item.added .add { background: var(--deep); border-color: var(--deep); color: var(--cream); }
+  .order-summary {
+    margin-top: 1.25rem;
+    border-top: 1px dashed var(--clay);
+    padding-top: 1rem;
+  }
+  .order-summary-title {
+    font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sienna); margin-bottom: 0.6rem;
+  }
+  .order-line {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem; color: var(--charcoal);
+    padding: 0.25rem 0;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .order-line.show { opacity: 1; transform: none; }
+  .order-total {
+    display: flex; justify-content: space-between;
+    font-size: 0.9rem; color: var(--deep); font-weight: 500;
+    border-top: 1px solid var(--sand);
+    margin-top: 0.5rem; padding-top: 0.6rem;
+  }
+  .capacity {
+    margin-top: 1.25rem;
+    font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  .capacity-track { height: 6px; background: var(--sand); margin-top: 0.4rem; overflow: hidden; }
+  .capacity-fill {
+    height: 100%; width: 0; background: var(--sienna);
+    transition: width 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Admin demo */
+  .admin-section { background: var(--warm-white); }
+  .admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+  .admin-stat {
+    border: 1px solid var(--sand);
+    background: var(--cream);
+    padding: 0.9rem 1rem;
+  }
+  .admin-stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem; color: var(--deep); display: block; line-height: 1.1;
+  }
+  .admin-stat-label { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .admin-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.75rem; color: var(--charcoal);
+    border: 1px solid var(--sand);
+    padding: 0.55rem 0.9rem;
+    margin-bottom: 0.4rem;
+    background: var(--warm-white);
+    opacity: 0; transform: translateX(-10px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .admin-row.show { opacity: 1; transform: none; }
+  .badge {
+    font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.15rem 0.5rem; border-radius: 2px;
+  }
+  .badge.pending { background: #F0E6D2; color: #8A6D2F; }
+  .badge.confirmed { background: #E3EBDF; color: var(--green); }
+  .badge.paid { background: var(--deep); color: var(--cream); }
+  .feature-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5rem; margin-top: 3.5rem; }
+  .feature-col h4 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem; font-weight: 400; color: var(--deep);
+    margin-bottom: 0.75rem;
+  }
+  .feature-col p { font-size: 0.8rem; color: var(--muted); line-height: 1.8; }
+  .feature-line { width: 28px; height: 1px; background: var(--clay); margin-bottom: 1rem; }
+
+  /* PHONE / SMS */
+  .sms-section { background: var(--deep); color: var(--cream); }
+  .sms-section .section-eyebrow { color: var(--clay); }
+  .sms-section .section-title { color: var(--cream); }
+  .sms-section .section-title em { color: var(--clay); }
+  .sms-section .section-sub { color: rgba(250,247,242,0.7); }
+  .sms-split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+  .sms-steps { list-style: none; display: flex; flex-direction: column; gap: 1.75rem; }
+  .sms-steps li { display: flex; gap: 1.25rem; }
+  .sms-step-num {
+    font-family: 'Cormorant Garamond', serif;
+    width: 2.4rem; height: 2.4rem; flex-shrink: 0;
+    border: 1px solid var(--clay); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--clay); font-size: 0.95rem;
+  }
+  .sms-steps h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 400; margin-bottom: 0.3rem; }
+  .sms-steps p { font-size: 0.83rem; color: rgba(250,247,242,0.65); line-height: 1.8; }
+  .phone {
+    width: 300px;
+    margin: 0 auto;
+    background: var(--warm-white);
+    border-radius: 36px;
+    border: 1px solid var(--sand);
+    padding: 1rem 1rem 1.5rem;
+    box-shadow: 0 40px 80px -40px rgba(0,0,0,0.5);
+    color: var(--charcoal);
+  }
+  .phone-notch { width: 90px; height: 5px; background: var(--sand); border-radius: 3px; margin: 0.25rem auto 0.9rem; }
+  .phone-header {
+    text-align: center;
+    font-size: 0.7rem; letter-spacing: 0.08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--sand);
+    padding-bottom: 0.6rem; margin-bottom: 0.9rem;
+  }
+  .bubble {
+    max-width: 85%;
+    font-size: 0.72rem; line-height: 1.55;
+    padding: 0.6rem 0.8rem;
+    border-radius: 14px;
+    margin-bottom: 0.55rem;
+    opacity: 0; transform: translateY(10px) scale(0.97);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .bubble.show { opacity: 1; transform: none; }
+  .bubble.in { background: var(--sand); color: var(--charcoal); border-bottom-left-radius: 4px; }
+  .bubble.out { background: var(--green); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+  .bubble .time { display: block; font-size: 0.58rem; opacity: 0.6; margin-top: 0.25rem; }
+
+  /* EMAIL FLOW */
+  .email-section { background: var(--cream); }
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3rem; margin-top: 3rem; }
+  .flow-card { position: relative; }
+  .flow-card::after {
+    content: '\2192';
+    position: absolute; top: 0.2rem; right: -2rem;
+    color: var(--clay); font-size: 1.1rem;
+  }
+  .flow-card:last-child::after { display: none; }
+  .flow-when {
+    font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--sienna); margin-bottom: 0.75rem;
+  }
+  .flow-card h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 400; color: var(--deep); margin-bottom: 0.6rem; }
+  .flow-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.8; }
+
+  /* ROUTINE */
+  .routine-section { background: var(--warm-white); }
+  .routine { max-width: 640px; margin-top: 3rem; }
+  .routine-day { margin-bottom: 2rem; }
+  .routine-day h4 {
+    font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sienna); margin-bottom: 0.85rem;
+  }
+  .check {
+    display: flex; gap: 0.9rem; align-items: baseline;
+    font-size: 0.88rem; color: var(--charcoal);
+    padding: 0.35rem 0;
+  }
+  .check .box {
+    width: 15px; height: 15px; flex-shrink: 0;
+    border: 1px solid var(--clay);
+    position: relative;
+    transform: translateY(2px);
+  }
+  .check .box::after {
+    content: '\2713';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; color: var(--cream);
+    background: var(--deep);
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .check.done .box::after { opacity: 1; transform: scale(1); }
+  .check.auto { color: var(--muted); }
+  .check.auto em { color: var(--green); font-style: normal; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; margin-left: 0.5rem; }
+
+  /* STACK */
+  .stack-section { background: var(--cream); }
+  .stack-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2.5rem; max-width: 700px; }
+  .stack-grid span {
+    font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--sand);
+    background: var(--warm-white);
+    padding: 0.6rem 1.1rem;
+  }
+
+  /* CTA */
+  .cta { background: var(--warm-white); text-align: center; padding: 8rem 6rem; }
+  .cta .section-title { max-width: 600px; margin: 0 auto 1.5rem; }
+  .cta .divider { margin: 0 auto 2.5rem; }
+  .cta-sub { font-size: 0.9rem; color: var(--muted); max-width: 480px; margin: 0 auto 3rem; line-height: 1.9; }
+
+  /* FOOTER */
+  footer {
+    background: var(--charcoal);
+    color: rgba(250,247,242,0.5);
+    padding: 3rem 6rem;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.75rem; letter-spacing: 0.05em;
+  }
+  .footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--cream); font-weight: 300; }
+  .footer-links { display: flex; gap: 2rem; list-style: none; }
+  .footer-links a {
+    color: rgba(250,247,242,0.4); text-decoration: none;
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--clay); }
+
+  /* SCROLL REVEAL */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.8s ease, transform 0.8s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .reveal-d1 { transition-delay: 0.12s; }
+  .reveal-d2 { transition-delay: 0.24s; }
+  .reveal-d3 { transition-delay: 0.36s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal, .order-line, .admin-row, .bubble, .check .box::after { transition: none !important; opacity: 1 !important; transform: none !important; }
+    .capacity-fill { transition: none !important; }
+  }
+
+  /* No-JS / no-IntersectionObserver fallback: show all content in its final state */
+  html:not(.js) .reveal, html:not(.js) .order-line, html:not(.js) .admin-row,
+  html:not(.js) .bubble, html:not(.js) .check .box::after {
+    opacity: 1 !important; transform: none !important;
+  }
+  html:not(.js) .capacity-fill { width: 72%; }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    nav { padding: 0 1.5rem; }
+    .nav-toggle {
+      display: flex; align-items: center; justify-content: center;
+      min-width: 44px; min-height: 44px;
+      background: none; border: none;
+      font-size: 1.6rem; color: var(--deep);
+      cursor: pointer; z-index: 200; position: relative; line-height: 1;
+    }
+    .nav-links {
+      display: none;
+      position: fixed; inset: 0;
+      background: var(--warm-white);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 2.5rem; z-index: 150;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links a { font-size: 1rem; min-height: 44px; display: flex; align-items: center; }
+
+    section { padding: 4rem 1.5rem; }
+    .cs-hero { padding-top: 120px; min-height: auto; padding-bottom: 4rem; }
+    .stat-band { grid-template-columns: 1fr 1fr; }
+    .stat-cell { border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .paths-grid { grid-template-columns: 1fr; }
+    .demo-split, .sms-split { grid-template-columns: 1fr; gap: 2.5rem; }
+    .feature-cols { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .flow { grid-template-columns: 1fr; gap: 2rem; }
+    .flow-card::after { display: none; }
+    .admin-grid { grid-template-columns: 1fr 1fr; }
+    .phone { width: 270px; }
+    .cta { padding: 5rem 1.5rem; }
+    footer { flex-direction: column; gap: 1.5rem; padding: 2.5rem 1.5rem; text-align: center; }
+    .footer-links { flex-wrap: wrap; justify-content: center; gap: 1rem; }
+  }
+  @media (max-width: 480px) {
+    .nav-logo img { height: 100px; }
+    .feature-cols { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="../index.html"><img src="../bos-logo.png" alt="The Builders' Ops Studio logo"></a>
+  <ul class="nav-links" id="nav-links" role="list">
+    <li><a href="../index.html#about">About</a></li>
+    <li><a href="../index.html#services">Services</a></li>
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-links">&#9776;</button>
+</nav>
+
+<!-- HERO -->
+<section class="cs-hero">
+  <p class="section-eyebrow reveal">Case Study &middot; Custom Ordering Platform</p>
+  <h1 class="cs-hero-title reveal reveal-d1">The Blessed Baker <em>and Son.</em></h1>
+  <p class="cs-hero-sub reveal reveal-d2">
+    A fully custom, live ordering platform for a micro-bakery in Tucker, Georgia. It handles two types of customer orders, automates weekly standing orders by text message, manages an email newsletter, and gives the owner a private dashboard to run everything, with no third-party apps and no monthly subscription.
+  </p>
+  <div class="cs-meta reveal reveal-d3">
+    <span>Online Ordering</span>
+    <span>Admin Dashboard</span>
+    <span>SMS Automation</span>
+    <span>Email Marketing</span>
+    <span>Live at theblessedbakerandson.com</span>
+  </div>
+</section>
+
+<!-- STAT BAND -->
+<div class="stat-band">
+  <div class="stat-cell reveal"><span class="stat-num" data-count="6">0</span><span class="stat-label">Customer-Facing Pages</span></div>
+  <div class="stat-cell reveal reveal-d1"><span class="stat-num" data-count="8">0</span><span class="stat-label">Admin Dashboard Tabs</span></div>
+  <div class="stat-cell reveal reveal-d2"><span class="stat-num" data-count="10">0</span><span class="stat-label">Schools Served for Drop-Off</span></div>
+  <div class="stat-cell reveal reveal-d3"><span class="stat-num">$0</span><span class="stat-label">Monthly Software Fees</span></div>
+</div>
+
+<!-- TWO PATHS -->
+<section class="paths">
+  <p class="section-eyebrow reveal">The Customer Experience</p>
+  <h2 class="section-title reveal">Two clear ways to <em>order.</em></h2>
+  <div class="divider reveal"></div>
+  <p class="section-sub reveal">
+    First-time visitors land on a home page that explains exactly how ordering works, then choose the path that fits: weekly pickup or custom delivery. An FAQ, contact page, and terms page round out the customer-facing site, all mobile-friendly.
+  </p>
+  <div class="paths-grid">
+    <div class="path-card reveal">
+      <span class="path-num">Path 01</span>
+      <h3 class="path-name">Micro-Bakery Pickup</h3>
+      <p class="path-desc">Weekly pickup orders, submitted over the weekend and collected on Fridays. Cupcakes by the dozen or half-dozen, and cake jars in two sizes across six signature flavors.</p>
+      <ul class="path-list">
+        <li>Tap-to-add menu with a live order summary</li>
+        <li>Real-time capacity tracker, so customers see what's still available</li>
+        <li>Standing order toggle for automatic weekly orders</li>
+        <li>Instant email confirmation to customer and owner</li>
+      </ul>
+    </div>
+    <div class="path-card reveal reveal-d1">
+      <span class="path-num">Path 02</span>
+      <h3 class="path-name">Custom Drop-Off Orders</h3>
+      <p class="path-desc">Custom baked goods delivered to ten schools in the Lakeside High School cluster of DeKalb County, a delivery zone the owner manages herself from the admin panel.</p>
+      <ul class="path-list">
+        <li>School picker fed live from the admin settings</li>
+        <li>Minimum 2-day lead time enforced on the date picker</li>
+        <li>Free-form request field for custom cakes and special orders</li>
+        <li>Owner confirms details and arranges payment directly</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ORDER FORM DEMO -->
+<section class="demo-section">
+  <div class="demo-split">
+    <div class="demo-copy reveal">
+      <p class="section-eyebrow">Live Order Form</p>
+      <h3>An order form that thinks ahead.</h3>
+      <p>Customers tap items into a live order summary that totals as they go. No cart, no checkout maze. A capacity tracker shows how many dozen are still available this week, so the owner never over-commits her oven.</p>
+      <p>When she hits her limit, takes a vacation, or blocks a holiday week, the form automatically shows a closed message she writes herself. Pricing, capacity, and availability are all managed from the admin panel. No code changes, ever.</p>
+    </div>
+    <div class="browser reveal reveal-d1" id="order-demo">
+      <div class="browser-bar">
+        <span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-dot"></span>
+        <span class="browser-url">theblessedbakerandson.com/micro-bakery</span>
+      </div>
+      <div class="browser-body">
+        <div class="menu-item" data-demo-add="1"><span>Biscoff Cookie Butter &middot; Dozen</span><span class="price">$40</span><span class="add">+</span></div>
+        <div class="menu-item" data-demo-add="2"><span>Red Velvet &middot; Half Dozen</span><span class="price">$20</span><span class="add">+</span></div>
+        <div class="menu-item"><span>Key Lime Cake Jars &middot; 8 oz &times; 12</span><span class="price">$96</span><span class="add">+</span></div>
+        <div class="order-summary">
+          <p class="order-summary-title">Your Order</p>
+          <div class="order-line" data-line="1"><span>Biscoff Cookie Butter &middot; Dozen</span><span>$40</span></div>
+          <div class="order-line" data-line="2"><span>Red Velvet &middot; Half Dozen</span><span>$20</span></div>
+          <div class="order-total"><span>Total</span><span id="demo-total">$60</span></div>
+        </div>
+        <div class="capacity">
+          This week's capacity: <span id="capacity-label">72%</span> booked
+          <div class="capacity-track"><div class="capacity-fill" id="capacity-fill"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ADMIN DEMO -->
+<section class="admin-section">
+  <div class="demo-split">
+    <div class="browser reveal" id="admin-demo">
+      <div class="browser-bar">
+        <span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-dot"></span>
+        <span class="browser-url">theblessedbakerandson.com/admin (password protected)</span>
+      </div>
+      <div class="browser-body">
+        <div class="admin-grid">
+          <div class="admin-stat"><span class="admin-stat-num" data-count="23">23</span><span class="admin-stat-label">Orders This Week</span></div>
+          <div class="admin-stat"><span class="admin-stat-num" data-count="5">5</span><span class="admin-stat-label">Pending Drop-Offs</span></div>
+          <div class="admin-stat"><span class="admin-stat-num" data-prefix="$" data-count="864">$864</span><span class="admin-stat-label">Est. Revenue</span></div>
+        </div>
+        <div class="admin-row" data-row="1"><span>Tasha W. &middot; 2 dz Biscoff, 12 jars</span><span class="badge paid">Paid</span></div>
+        <div class="admin-row" data-row="2"><span>Renee J. &middot; 1 dz Red Velvet</span><span class="badge confirmed">Confirmed</span></div>
+        <div class="admin-row" data-row="3"><span>Monica B. &middot; Custom cake, Oak Grove Elem.</span><span class="badge pending">Pending</span></div>
+        <div class="admin-row" data-row="4"><span>Standing order &middot; D. Carter &middot; processes Thu 9am</span><span class="badge confirmed">Auto</span></div>
+      </div>
+    </div>
+    <div class="demo-copy reveal reveal-d1">
+      <p class="section-eyebrow">The Back Office</p>
+      <h3>A private dashboard that runs the whole business.</h3>
+      <p>Behind a password-protected admin page, the owner gets a complete operations center: a weekly snapshot, a full order calendar, filterable order tables with bulk status updates, customer order histories, and one-click CSV exports.</p>
+      <p>Reporting charts show best-selling flavors, busiest schools, and revenue trends. A built-in email tab sends the weekly menu drop to newsletter subscribers, with scheduling, recipient filtering, and live preview. Everything she can change lives in Settings: prices, capacity limits, school list, open/close toggles, and blocked vacation dates.</p>
+    </div>
+  </div>
+  <div class="feature-cols">
+    <div class="feature-col reveal"><div class="feature-line"></div><h4>Calendar</h4><p>Every order, delivery, and blocked date on one monthly view. Click any day for details.</p></div>
+    <div class="feature-col reveal reveal-d1"><div class="feature-line"></div><h4>Reporting</h4><p>Orders by flavor, school, and date, plus revenue summaries and CSV export.</p></div>
+    <div class="feature-col reveal reveal-d2"><div class="feature-line"></div><h4>Email Marketing</h4><p>Weekly menu drops with recipient filters, scheduling, and campaign history built in.</p></div>
+    <div class="feature-col reveal reveal-d3"><div class="feature-line"></div><h4>Settings</h4><p>Prices, capacity, schools, closed messages, and date blocks. Zero code changes needed.</p></div>
+  </div>
+</section>
+
+<!-- SMS STANDING ORDERS -->
+<section class="sms-section">
+  <p class="section-eyebrow reveal">The Signature Feature</p>
+  <h2 class="section-title reveal">Standing orders that run <em>themselves.</em></h2>
+  <div class="divider reveal"></div>
+  <p class="section-sub reveal">
+    Loyal customers check one box, "Make this a standing weekly order," and from then on, their order processes automatically every Thursday at 9:00 AM. They manage everything by text message. The owner does nothing.
+  </p>
+  <div class="sms-split">
+    <ul class="sms-steps">
+      <li class="reveal"><span class="sms-step-num">01</span><div><h4>Thursday, 9:00 AM</h4><p>The system checks for blocked weeks, creates an order for every active standing customer, and texts each one a confirmation.</p></div></li>
+      <li class="reveal reveal-d1"><span class="sms-step-num">02</span><div><h4>Customers reply by text</h4><p>SKIP pauses one week. STOP cancels for good. The system handles both automatically. No action needed from the owner.</p></div></li>
+      <li class="reveal reveal-d2"><span class="sms-step-num">03</span><div><h4>Guaranteed weekly revenue</h4><p>The Standing Orders tab shows every active subscriber, their items, and a guaranteed weekly revenue figure the owner can plan around.</p></div></li>
+    </ul>
+    <div class="phone reveal reveal-d1" id="sms-demo">
+      <div class="phone-notch"></div>
+      <div class="phone-header">The Blessed Baker and Son</div>
+      <div class="bubble in" data-bubble="1">Hi Denise, your weekly Blessed Baker order is confirmed for this Friday: 1 dozen Strawberry Cupcakes. Reply SKIP to skip this week.<span class="time">Thursday 9:00 AM</span></div>
+      <div class="bubble out" data-bubble="2">SKIP<span class="time">Thursday 9:04 AM</span></div>
+      <div class="bubble in" data-bubble="3">No problem! Your order is skipped this week. Your standing order stays active for next Friday. &#127856;<span class="time">Thursday 9:04 AM</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- EMAIL AUTOMATION -->
+<section class="email-section">
+  <p class="section-eyebrow reveal">Automated Communication</p>
+  <h2 class="section-title reveal">The right message, every time, <em>automatically.</em></h2>
+  <div class="divider reveal"></div>
+  <div class="flow">
+    <div class="flow-card reveal">
+      <p class="flow-when">When an order comes in</p>
+      <h4>Both sides get notified</h4>
+      <p>The owner receives a full order detail email; the customer gets an instant acknowledgment that their request was received.</p>
+    </div>
+    <div class="flow-card reveal reveal-d1">
+      <p class="flow-when">When the owner confirms</p>
+      <h4>Customer gets the details</h4>
+      <p>A confirmation email goes out with order details, payment instructions, and pickup or delivery information.</p>
+    </div>
+    <div class="flow-card reveal reveal-d2">
+      <p class="flow-when">Every week</p>
+      <h4>The menu drop goes out</h4>
+      <p>Newsletter subscribers receive the weekly menu, written and scheduled from the admin Email tab.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WEEKLY ROUTINE -->
+<section class="routine-section">
+  <p class="section-eyebrow reveal">The Result</p>
+  <h2 class="section-title reveal">A whole bakery, run in <em>minutes a day.</em></h2>
+  <div class="divider reveal"></div>
+  <p class="section-sub reveal">The platform shipped with a simple weekly routine. Watch how little of it the owner actually has to do by hand.</p>
+  <div class="routine" id="routine">
+    <div class="routine-day reveal">
+      <h4>Weekend</h4>
+      <div class="check"><span class="box"></span><span>Send the weekly menu via the Email tab</span></div>
+      <div class="check"><span class="box"></span><span>Watch orders arrive on the dashboard</span></div>
+    </div>
+    <div class="routine-day reveal">
+      <h4>Monday &ndash; Wednesday</h4>
+      <div class="check"><span class="box"></span><span>Confirm orders with one click</span></div>
+    </div>
+    <div class="routine-day reveal">
+      <h4>Thursday</h4>
+      <div class="check auto"><span class="box"></span><span>Standing orders process and text confirmations send <em>fully automatic</em></span></div>
+    </div>
+    <div class="routine-day reveal">
+      <h4>Friday</h4>
+      <div class="check"><span class="box"></span><span>Mark orders paid at pickup</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section class="stack-section">
+  <p class="section-eyebrow reveal">Under the Hood</p>
+  <h2 class="section-title reveal">Built to cost <em>nothing to run.</em></h2>
+  <div class="divider reveal"></div>
+  <p class="section-sub reveal">
+    The platform runs on Google Firebase: hosting, real-time database, and the scheduled cloud functions that process standing orders every Thursday. SendGrid delivers email, Twilio powers the two-way SMS, and the whole system runs with no monthly software subscription.
+  </p>
+  <div class="stack-grid reveal">
+    <span>Firebase Hosting</span>
+    <span>Firestore Database</span>
+    <span>Cloud Functions</span>
+    <span>Twilio SMS</span>
+    <span>SendGrid Email</span>
+    <span>Custom Domain</span>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <p class="section-eyebrow">Your Business Next?</p>
+  <h2 class="section-title">Imagine your operation running <em>this smoothly.</em></h2>
+  <div class="divider"></div>
+  <p class="cta-sub">
+    Every system I build starts the same way: a conversation about how your business actually works, and where the hours are leaking. Let's find yours.
+  </p>
+  <a href="../index.html#contact" class="btn-primary">Work With Me</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">The Builders' Ops Studio</span>
+  <ul class="footer-links">
+    <li><a href="../index.html#about">About</a></li>
+    <li><a href="../index.html#services">Services</a></li>
+    <li><a href="../index.html#work">Work</a></li>
+    <li><a href="../index.html#contact">Contact</a></li>
+  </ul>
+  <span class="footer-logo">&copy; 2026 The Builders' Ops Studio &middot; Atlanta, GA</span>
+</footer>
+
+<script>
+// Mobile nav toggle
+(function() {
+  var toggle = document.getElementById('nav-toggle');
+  var links = document.getElementById('nav-links');
+  toggle.addEventListener('click', function() {
+    var isOpen = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    toggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+  });
+  links.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() { links.classList.remove('open'); });
+  });
+})();
+
+(function() {
+  // No IntersectionObserver: drop the js class so the CSS fallback shows everything
+  if (!('IntersectionObserver' in window)) {
+    document.documentElement.classList.remove('js');
+    return;
+  }
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Markup holds final values for the no-JS fallback; reset to 0 before animating
+  document.querySelectorAll('[data-count]').forEach(function(el) {
+    el.textContent = (el.getAttribute('data-prefix') || '') + '0';
+  });
+
+  // Scroll reveal
+  var revealObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); revealObserver.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+  // Animated counters
+  function animateCount(el) {
+    var target = parseInt(el.getAttribute('data-count'), 10);
+    var prefix = el.getAttribute('data-prefix') || '';
+    if (reduced) { el.textContent = prefix + target; return; }
+    var start = null, dur = 1400;
+    function tick(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + Math.round(target * eased);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  var countObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { animateCount(e.target); countObserver.unobserve(e.target); }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('[data-count]').forEach(function(el) { countObserver.observe(el); });
+
+  // Order form demo sequence: resolve every hook up front; a missing one disables the demo cleanly
+  var orderDemo = document.getElementById('order-demo');
+  var total = document.getElementById('demo-total');
+  var add1 = document.querySelector('[data-demo-add="1"]'), line1 = document.querySelector('[data-line="1"]');
+  var add2 = document.querySelector('[data-demo-add="2"]'), line2 = document.querySelector('[data-line="2"]');
+  var capFill = document.getElementById('capacity-fill'), capLabel = document.getElementById('capacity-label');
+  var orderObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (!e.isIntersecting) return;
+      orderObserver.unobserve(e.target);
+      var steps = [
+        function() { add1.classList.add('added'); line1.classList.add('show'); total.textContent = '$40'; },
+        function() { add2.classList.add('added'); line2.classList.add('show'); total.textContent = '$60'; },
+        function() { capFill.style.width = '72%'; capLabel.textContent = '72%'; }
+      ];
+      if (reduced) { steps.forEach(function(s) { s(); }); return; }
+      steps.forEach(function(s, i) { setTimeout(s, 700 + i * 900); });
+    });
+  }, { threshold: 0.2 });
+  if (orderDemo && total && add1 && line1 && add2 && line2 && capFill && capLabel) {
+    total.textContent = '$0';
+    capLabel.textContent = '0%';
+    orderObserver.observe(orderDemo);
+  }
+
+  // Admin rows
+  var adminDemo = document.getElementById('admin-demo');
+  var adminObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (!e.isIntersecting) return;
+      adminObserver.unobserve(e.target);
+      document.querySelectorAll('.admin-row').forEach(function(row, i) {
+        if (reduced) { row.classList.add('show'); return; }
+        setTimeout(function() { row.classList.add('show'); }, 600 + i * 350);
+      });
+    });
+  }, { threshold: 0.2 });
+  if (adminDemo) adminObserver.observe(adminDemo);
+
+  // SMS bubbles
+  var smsDemo = document.getElementById('sms-demo');
+  var smsObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (!e.isIntersecting) return;
+      smsObserver.unobserve(e.target);
+      document.querySelectorAll('.bubble').forEach(function(b, i) {
+        if (reduced) { b.classList.add('show'); return; }
+        setTimeout(function() { b.classList.add('show'); }, 500 + i * 1100);
+      });
+    });
+  }, { threshold: 0.2 });
+  if (smsDemo) smsObserver.observe(smsDemo);
+
+  // Routine checklist
+  var routine = document.getElementById('routine');
+  var routineObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (!e.isIntersecting) return;
+      routineObserver.unobserve(e.target);
+      document.querySelectorAll('#routine .check').forEach(function(c, i) {
+        if (reduced) { c.classList.add('done'); return; }
+        setTimeout(function() { c.classList.add('done'); }, 600 + i * 500);
+      });
+    });
+  }, { threshold: 0.2 });
+  if (routine) routineObserver.observe(routine);
+})();
+</script>
+
+</body>
+</html>
