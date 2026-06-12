@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0.0 — 2026-06-12
+## 1.1.0.0 (2026-06-12)
 
 - Add Work portfolio section to homepage with case-study cards
 - Add animated case-study walkthrough: The Blessed Baker and Son (work/blessed-baker.html)

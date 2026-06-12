@@ -1,5 +1,5 @@
 # Y.A.M.S. WELLNESS
-## Website & Client Portal — Features & Functionality Guide
+## Website & Client Portal: Features & Functionality Guide
 
 **Prepared for:** [Coach Name], Owner
 **Sites:** yamswellness.com (public website) · portal.yamswellness.com (client portal)
@@ -11,10 +11,10 @@
 
 The Y.A.M.S. Wellness platform is two connected applications built for your coaching practice:
 
-1. **The public website** — tells your story, presents your four packages, and turns visitors into Vibe Check applicants.
-2. **The client portal** — a secure, login-protected space where each client's coaching journey lives (intake, session prep, progress, resources, contracts), plus a private admin dashboard where you run the entire practice.
+1. **The public website:** tells your story, presents your four packages, and turns visitors into Vibe Check applicants.
+2. **The client portal:** a secure, login-protected space where each client's coaching journey lives (intake, session prep, progress, resources, contracts), plus a private admin dashboard where you run the entire practice.
 
-Every application, email notification, and client account flows between them automatically — no spreadsheets, no third-party booking apps, and no monthly software subscription.
+Every application, email notification, and client account flows between them automatically: no spreadsheets, no third-party booking apps, and no monthly software subscription.
 
 ---
 
@@ -24,15 +24,15 @@ The public website has six pages your visitors see and use.
 
 ### 1.1 Home Page (index.html)
 
-The front door to your practice. It speaks directly to your audience — high-achieving Black women ready to stop surviving and start living in alignment — and moves them toward one action: applying for a Vibe Check.
+The front door to your practice. It speaks directly to your audience, high-achieving Black women ready to stop surviving and start living in alignment, and moves them toward one action: applying for a Vibe Check.
 
 What it includes:
-- **Hero** — "For the woman who has poured into everyone but herself," with an Apply call-to-action
-- **"You know this feeling" section** — names the alignment problem your coaching solves
-- **Packages grid** — all four coaching paths with pricing (see 1.2)
-- **Testimonials** — real client words, real shifts
-- **Email opt-in** — visitors get the free 5-Day Alignment Reset guide and join your list
-- **Final call-to-action** — "Ready to stop pouring from an empty cup?"
+- **Hero:** "For the woman who has poured into everyone but herself," with an Apply call-to-action
+- **"You know this feeling" section:** names the alignment problem your coaching solves
+- **Packages grid:** all four coaching paths with pricing (see 1.2)
+- **Testimonials:** real client words, real shifts
+- **Email opt-in:** visitors get the free 5-Day Alignment Reset guide and join your list
+- **Final call-to-action:** "Ready to stop pouring from an empty cup?"
 - **Mobile-friendly navigation** throughout
 
 ### 1.2 Work With Me Page (work-with-me.html)
@@ -51,9 +51,9 @@ All packages include client portal access. The page closes with the four-step "F
 
 ### 1.3 About Page (about.html)
 
-Your story — why you built Y.A.M.S. — plus the Focus → Reflect → Refine framework explained, your approach, and your credentials.
+Your story (why you built Y.A.M.S.) plus the Focus → Reflect → Refine framework explained, your approach, and your credentials.
 
-### 1.4 Apply Page (apply.html) — The Vibe Check Application
+### 1.4 Apply Page (apply.html): The Vibe Check Application
 
 The heart of the public site. Prospective clients complete a short application:
 
@@ -84,19 +84,19 @@ Your terms and conditions.
 Each client logs in with their own account and sees only their own records. Seven pages:
 
 ### 2.1 Dashboard
-A personal welcome with their journey at a glance — package, upcoming focus, and quick links to everything below.
+A personal welcome with their journey at a glance: package, upcoming focus, and quick links to everything below.
 
 ### 2.2 Intake
-The intake form they complete before the first session — their story, goals, and starting point. Saved to their record so you can review it any time.
+The intake form they complete before the first session: their story, goals, and starting point. Saved to their record so you can review it any time.
 
 ### 2.3 Session Prep
 Reflection prompts clients complete before each session, so every meeting starts with intention.
 
 ### 2.4 Progress
-A running progress journal — clients log their shifts week by week, and you can add coach notes alongside.
+A running progress journal: clients log their shifts week by week, and you can add coach notes alongside.
 
 ### 2.5 Resources
-Your curated resource library — practices, readings, and tools you publish from the admin. Clients can read; only you can add.
+Your curated resource library: practices, readings, and tools you publish from the admin. Clients can read; only you can add.
 
 ### 2.6 Contract
 The client reviews their coaching agreement and signs it electronically, right in the portal. The signed contract is stored on their record.
@@ -108,7 +108,7 @@ A direct message line to you between sessions. Messages land in your admin inbox
 
 ## SECTION 3: THE COACH ADMIN (password-protected, coach only)
 
-Your private back office at the portal address. Protected by coach-only authentication — no client can ever access it.
+Your private back office at the portal address. Protected by coach-only authentication; no client can ever access it.
 
 ### 3.1 Dashboard
 A snapshot of the practice: active clients, new leads, upcoming sessions, and recent activity.
@@ -117,10 +117,10 @@ A snapshot of the practice: active clients, new leads, upcoming sessions, and re
 Every Vibe Check application in one pipeline. Filter by package, review the full application, and track status from new lead → call scheduled → enrolled.
 
 ### 3.3 Clients
-The full roster. Click any client to open their complete record — intake, session history, progress entries, contracts, and profile.
+The full roster. Click any client to open their complete record: intake, session history, progress entries, contracts, and profile.
 
 ### 3.4 Create Client Accounts
-When an applicant becomes a client, you create their portal account directly from the admin — one click, credentials handled automatically.
+When an applicant becomes a client, you create their portal account directly from the admin: one click, credentials handled automatically.
 
 ### 3.5 Calendar
 Your session schedule across all clients.
@@ -131,7 +131,7 @@ Write your coaching agreement once as a reusable template using merge fields:
 - `{{PACKAGE}}`
 - `{{DATE}}`
 
-Send a contract to any client in seconds — the fields fill themselves. Signed contracts are stored on the client's record.
+Send a contract to any client in seconds; the fields fill themselves. Signed contracts are stored on the client's record.
 
 ### 3.7 Financials
 A payment log tied to clients and packages, so you always know what's been paid and what's outstanding.
@@ -182,18 +182,18 @@ The right email goes out automatically at every step:
 
 ## SECTION 6: TECHNOLOGY & HOSTING
 
-For reference — you don't need to manage any of this day-to-day.
+For reference: you don't need to manage any of this day-to-day.
 
-- **Hosting:** Firebase Hosting (Google) — both the website and the portal
-- **Database:** Firebase Firestore — leads, clients, sessions, progress, contracts, messages, payments
+- **Hosting:** Firebase Hosting (Google), serving both the website and the portal
+- **Database:** Firebase Firestore, holding leads, clients, sessions, progress, contracts, messages, payments
 - **Authentication:** Firebase Auth with a coach-only admin claim
-- **Automated functions:** Firebase Cloud Functions — application pipeline, account creation, and all emails
+- **Automated functions:** Firebase Cloud Functions, running the application pipeline, account creation, and all emails
 - **Email delivery:** Gmail via secure app credentials
 - **Domains:** yamswellness.com (website) · portal.yamswellness.com (portal)
 
 ---
 
-## SECTION 7: QUICK REFERENCE — YOUR ROUTINE
+## SECTION 7: QUICK REFERENCE (YOUR ROUTINE)
 
 **When a new application arrives (you'll get an email):**
 - [ ] Open Admin → Leads and review the application
