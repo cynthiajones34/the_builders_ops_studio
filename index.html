@@ -343,6 +343,86 @@
   }
   .service-card:hover .service-desc { color: rgba(250,247,242,0.7); }
 
+  /* WORK */
+  .work { background: var(--warm-white); }
+  .work-header { margin-bottom: 4rem; }
+  .work-intro {
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: 620px;
+    line-height: 1.9;
+  }
+  .work-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+  .work-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: var(--cream);
+    padding: 3rem 2.5rem;
+    text-decoration: none;
+    transition: background 0.3s;
+  }
+  .work-card:hover { background: var(--deep); }
+  .work-type {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--sienna);
+    margin-bottom: 1.25rem;
+    transition: color 0.3s;
+  }
+  .work-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 400;
+    color: var(--deep);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+  }
+  .work-desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.8;
+    margin-bottom: 1.75rem;
+    transition: color 0.3s;
+  }
+  .work-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin-bottom: 2rem;
+  }
+  .work-tags li {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--sand);
+    padding: 0.35rem 0.75rem;
+    transition: color 0.3s, border-color 0.3s;
+  }
+  .work-link {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--deep);
+    border-bottom: 1px solid var(--clay);
+    padding-bottom: 0.25rem;
+    margin-top: auto;
+    transition: color 0.3s;
+  }
+  .work-card:hover .work-type { color: var(--clay); }
+  .work-card:hover .work-name { color: var(--cream); }
+  .work-card:hover .work-desc { color: rgba(250,247,242,0.7); }
+  .work-card:hover .work-tags li { color: var(--clay); border-color: rgba(196,168,130,0.4); }
+  .work-card:hover .work-link { color: var(--clay); }
+
   /* PROCESS */
   .process { background: var(--warm-white); }
   .process-steps {
@@ -671,6 +751,10 @@
     /* Services */
     .services-grid { grid-template-columns: 1fr; }
 
+    /* Work */
+    .work-grid { grid-template-columns: 1fr; }
+    .work-card { padding: 2.5rem 1.5rem; }
+
     /* Recommendations */
     .rec-grid { grid-template-columns: 1fr; }
 
@@ -730,6 +814,7 @@
   <ul class="nav-links" id="nav-links" role="list">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
+    <li><a href="#work">Work</a></li>
     <li><a href="#process">Process</a></li>
     <li><a href="#recommendations">Recommendations</a></li>
     <li><a href="#contact">Contact</a></li>
@@ -853,6 +938,48 @@
   </div>
 </section>
 
+<!-- WORK -->
+<section id="work" class="work">
+  <div class="work-header">
+    <p class="section-eyebrow">Selected Work</p>
+    <h2 class="section-title">Systems I've <em>built.</em></h2>
+    <div class="divider"></div>
+    <p class="work-intro">
+      These aren't mockups — they're live platforms running real businesses today. Step through the interactive walkthroughs to see how each one works, from the customer experience to the back office.
+    </p>
+  </div>
+  <div class="work-grid">
+    <a class="work-card" href="work/blessed-baker.html">
+      <p class="work-type">Custom Ordering Platform</p>
+      <h3 class="work-name">The Blessed Baker and Son</h3>
+      <p class="work-desc">
+        A live ordering platform for a Georgia micro-bakery — two order flows with real-time capacity tracking, a private admin dashboard, automated weekly standing orders managed entirely by text message, and built-in email marketing. No third-party apps, no monthly subscription.
+      </p>
+      <ul class="work-tags" role="list">
+        <li>Online Ordering</li>
+        <li>Admin Dashboard</li>
+        <li>SMS Automation</li>
+        <li>Email Marketing</li>
+      </ul>
+      <span class="work-link">View the walkthrough &rarr;</span>
+    </a>
+    <a class="work-card" href="work/yams.html">
+      <p class="work-type">Coaching Practice Platform</p>
+      <h3 class="work-name">Y.A.M.S. Wellness</h3>
+      <p class="work-desc">
+        A complete digital home for a holistic coaching practice — a marketing site with an application pipeline, automated client and coach emails, a secure client portal for intake, session prep, and progress tracking, and a full coach admin with leads, contracts, and financials.
+      </p>
+      <ul class="work-tags" role="list">
+        <li>Client Portal</li>
+        <li>Lead Pipeline</li>
+        <li>Contract E-Sign</li>
+        <li>Coach Admin</li>
+      </ul>
+      <span class="work-link">View the walkthrough &rarr;</span>
+    </a>
+  </div>
+</section>
+
 <!-- PROCESS -->
 <section id="process" class="process">
   <p class="section-eyebrow">How It Works</p>
@@ -941,6 +1068,7 @@
   <ul class="footer-links">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
+    <li><a href="#work">Work</a></li>
     <li><a href="#process">Process</a></li>
     <li><a href="#recommendations">Recommendations</a></li>
     <li><a href="#contact">Contact</a></li>
