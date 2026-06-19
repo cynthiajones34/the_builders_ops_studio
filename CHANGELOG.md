@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0.1 (2026-06-18)
+
+- Replace Calendly with an inline Google Calendar Appointment Scheduling embed on the homepage booking CTA (Google Meet, free times only)
+- Remove the Calendly widget script and stylesheet from the page head
+
 ## 1.1.0.0 (2026-06-12)
 
 - Add Work portfolio section to homepage with case-study cards
