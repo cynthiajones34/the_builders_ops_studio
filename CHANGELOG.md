@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0.3 (2026-06-18)
+
+- Restore the trimmed footer that a prior squash-merge had reverted: remove the reintroduced logo, Contact link, and personal email; keep the Work link
+- Replace remaining personal email references (structured data and contact-form fallback) with cynthia@thebuildersopsstudio.com
+
 ## 1.1.0.2 (2026-06-18)
 
 - Change the homepage booking from an always-on inline embed to a "Book a Discovery Call" button that opens the Google Calendar booking page in a popup dialog
