@@ -4,6 +4,8 @@
 
 - Change the homepage booking from an always-on inline embed to a "Book a Discovery Call" button that opens the Google Calendar booking page in a popup dialog
 - Booking calendar lazy-loads on first open (no extra load on page view); dialog closes via button, click-outside, or Escape
+- Restore the trimmed footer that a prior squash-merge had reverted: remove the reintroduced logo, Contact link, and personal email; keep the new Work link
+- Replace remaining personal email references (structured data and contact-form fallback) with cynthia@thebuildersopsstudio.com
 
 ## 1.1.0.1 (2026-06-18)
 
