@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0.6 (2026-06-21)
+
+- Mobile: fix the navigation menu so all six links show full-screen. The nav's backdrop-filter was making it the containing block for the fixed menu overlay, trapping it inside the bar so the top links overflowed off-screen. Drop the blur on mobile (the 92%-opaque background covers for it).
+
 ## 1.1.0.5 (2026-06-21)
 
 - Mobile: fix the hero stat bar cutting off the "183%" block by letting the three columns shrink (min-width:0) and trimming their padding and number size so all three fit
