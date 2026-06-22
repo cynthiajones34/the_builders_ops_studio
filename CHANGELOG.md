@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0.5 (2026-06-21)
+
+- Mobile: fix the hero stat bar cutting off the "183%" block by letting the three columns shrink (min-width:0) and trimming their padding and number size so all three fit
+
 ## 1.1.0.4 (2026-06-21)
 
 - Mobile: center the hero buttons (a conflicting touch-target rule had left them inconsistently aligned)
