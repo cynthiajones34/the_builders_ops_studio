@@ -737,7 +737,10 @@
   @media (max-width: 768px) {
 
     /* Nav */
-    nav { padding: 0 1.5rem; }
+    /* Drop the blur on mobile: backdrop-filter makes <nav> the containing block
+       for the fixed full-screen menu, trapping it inside the bar. The 92%-opaque
+       background covers for the lost blur. */
+    nav { padding: 0 1.5rem; backdrop-filter: none; -webkit-backdrop-filter: none; }
     .nav-toggle {
       display: block;
       background: none;
