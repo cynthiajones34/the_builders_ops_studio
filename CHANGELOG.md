@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0.4 (2026-06-21)
+
+- Mobile: center the hero buttons (a conflicting touch-target rule had left them inconsistently aligned)
+- Mobile: show the full circular hero photo without cropping its sides (display the image at its natural aspect, contained and centered)
+- Mobile: keep the footer copyright "Atlanta, GA" together on one line
+
 ## 1.1.0.3 (2026-06-18)
 
 - Restore the trimmed footer that a prior squash-merge had reverted: remove the reintroduced logo, Contact link, and personal email; keep the Work link

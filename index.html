@@ -766,7 +766,8 @@
     /* Hero */
     .hero { grid-template-columns: 1fr; padding-top: 70px; }
     .hero-left { padding: 3rem 1.5rem; }
-    .hero-right { min-height: 260px; }
+    .hero-right { min-height: auto; background: #ffffff; }
+    .hero-right img { width: 100% !important; max-width: 320px; height: auto !important; object-fit: contain !important; object-position: center !important; margin: 1.25rem auto 0 !important; display: block; }
     .hero-stat-bar { position: static; }
 
     /* Intro band */
@@ -796,8 +797,8 @@
     .cta-buttons { flex-direction: column; align-items: center; gap: 1rem; }
     .btn-outline { margin-left: 0; }
 
-    /* Button centering */
-    .btn-primary, .btn-outline { align-self: center; display: block; width: fit-content; margin-left: auto; margin-right: auto; }
+    /* Button centering (sizing only; display + centering live in the touch-target block below so they win the cascade) */
+    .btn-primary, .btn-outline { width: fit-content; max-width: 100%; }
 
     /* Footer */
     footer {
@@ -807,6 +808,7 @@
       text-align: center;
     }
     .footer-links { flex-wrap: wrap; justify-content: center; gap: 1rem; }
+    .footer-logo { font-size: 0.9rem; line-height: 1.4; }
 
     /* Modal / Form */
     .modal-box { padding: 2rem 1.25rem; }
@@ -828,7 +830,7 @@
   @media (max-width: 768px) {
     .nav-links a { min-height: 44px; display: flex; align-items: center; }
     .nav-toggle { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
-    .btn-primary, .btn-outline { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-primary, .btn-outline { min-height: 44px; display: flex; width: fit-content; max-width: 100%; margin: 0.5rem auto; align-items: center; justify-content: center; }
     .form-submit { min-height: 44px; }
   }
 </style>
@@ -1100,7 +1102,7 @@
     <li><a href="#process">Process</a></li>
     <li><a href="#recommendations">Recommendations</a></li>
   </ul>
-  <span class="footer-logo">&copy; 2026 The Builders' Ops Studio &middot; Atlanta, GA</span>
+  <span class="footer-logo">&copy; 2026 The Builders' Ops Studio &middot; Atlanta,&nbsp;GA</span>
 </footer>
 
 <!-- BOOKING MODAL -->
