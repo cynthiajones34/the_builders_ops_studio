@@ -1200,12 +1200,14 @@
     var isOpen = links.classList.toggle('open');
     toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     toggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+    toggle.innerHTML = isOpen ? '&#10005;' : '&#9776;';
   });
   links.querySelectorAll('a').forEach(function(a) {
     a.addEventListener('click', function() {
       links.classList.remove('open');
       toggle.setAttribute('aria-expanded', 'false');
       toggle.setAttribute('aria-label', 'Open navigation menu');
+      toggle.innerHTML = '&#9776;';
     });
   });
 })();
