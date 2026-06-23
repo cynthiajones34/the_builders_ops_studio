@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* ---- BOS Brand tokens (from BOS Brand Guide 2026) ---- */
+@theme {
+  --color-brown: #3d2b1f; /* Deep Brown: primary text, dark surfaces */
+  --color-brown-mid: #6b4c3b; /* secondary text, subheads */
+  --color-copper: #a0522d; /* accent text, links, callouts */
+  --color-clay: #c4956a; /* primary accent, borders, highlights */
+  --color-clay-light: #f0e0cc; /* hover, warm backgrounds */
+  --color-sand: #e8dcc8; /* borders, dividers */
+  --color-cream: #f5f0e8; /* page + card backgrounds */
+  --color-light: #faf7f2; /* section backgrounds, alt rows */
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Jost", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --color-positive: #4f7a4f;
+  --color-warning: #b8860b;
+  --color-danger: #a0522d;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-light);
+  color: var(--color-brown);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Display face used with restraint, per brand guide */
+.font-display {
+  font-family: var(--font-display);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-sand);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
