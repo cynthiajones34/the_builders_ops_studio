@@ -52,14 +52,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
     } catch (e: any) {
-      if (e?.code === "auth/popup-closed-by-user") return;
-      if (e?.code === "auth/operation-not-allowed") {
-        setError(
-          "Google sign-in isn't enabled yet. Enable it in the Firebase console (Authentication → Sign-in method → Google)."
-        );
-      } else {
-        setError(e?.message ?? "Sign-in failed. Try again.");
-      }
+      const code: string = e?.code ?? "";
+      console.error("[auth] sign-in failed:", code, e);
+      // User just closed/cancelled the popup; not an error worth showing.
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request")
+        return;
+
+      const messages: Record<string, string> = {
+        "auth/operation-not-allowed":
+          "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
+        "auth/configuration-not-found":
+          "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
+        "auth/unauthorized-domain":
+          "This domain isn't authorized. Add it in Authentication → Settings → Authorized domains.",
+        "auth/popup-blocked":
+          "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
+        "auth/network-request-failed":
+          "Network error reaching Firebase. Check your connection and try again.",
+      };
+      setError(
+        (messages[code] ?? e?.message ?? "Sign-in failed.") +
+          (code ? `  (${code})` : "")
+      );
     }
   }
 
