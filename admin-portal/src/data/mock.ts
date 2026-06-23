@@ -69,11 +69,11 @@ export const contentIdeas = [
 ];
 
 export const calendar = [
-  { day: "Mon", items: [{ t: "LinkedIn: Operations", tone: "clay" }] },
-  { day: "Tue", items: [{ t: "Instagram carousel", tone: "neutral" }] },
-  { day: "Wed", items: [{ t: "Substack deep-dive", tone: "positive" }] },
-  { day: "Thu", items: [] },
-  { day: "Fri", items: [{ t: "LinkedIn: Client Story", tone: "clay" }, { t: "TikTok tip", tone: "neutral" }] },
+  { day: "Mon", date: "Jun 22", items: [{ t: "LinkedIn: Operations", tone: "clay" }] },
+  { day: "Tue", date: "Jun 23", items: [{ t: "Instagram carousel", tone: "neutral" }] },
+  { day: "Wed", date: "Jun 24", items: [{ t: "Substack deep-dive", tone: "positive" }] },
+  { day: "Thu", date: "Jun 25", items: [] },
+  { day: "Fri", date: "Jun 26", items: [{ t: "LinkedIn: Client Story", tone: "clay" }, { t: "TikTok tip", tone: "neutral" }] },
 ];
 
 export const emails = [

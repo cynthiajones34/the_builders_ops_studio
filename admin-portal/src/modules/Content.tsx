@@ -139,9 +139,12 @@ export default function Content() {
           <div className="grid grid-cols-5 gap-3">
             {calendar.map((d) => (
               <div key={d.day} className="rounded-xl border border-sand bg-light p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brown-mid">
-                  {d.day}
-                </p>
+                <div className="mb-2 flex items-baseline justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-brown-mid">
+                    {d.day}
+                  </p>
+                  <p className="text-[11px] font-semibold text-clay">{d.date}</p>
+                </div>
                 <div className="space-y-2">
                   {d.items.length === 0 && (
                     <p className="text-[11px] italic text-brown-mid/50">Open slot</p>
