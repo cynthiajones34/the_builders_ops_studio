@@ -1,13 +1,23 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Sparkles, Search, Bell, Plus } from "lucide-react";
+import { Sparkles, Search, Bell, Plus, LogOut } from "lucide-react";
 import { sections, groups } from "../nav";
 import AssistantPanel from "./AssistantPanel";
+import { useAuth } from "../lib/AuthContext";
 
 export default function Shell() {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const loc = useLocation();
   const active = sections.find((s) => loc.pathname.startsWith(s.path));
+  const { user, logout } = useAuth();
+
+  const displayName = user?.displayName ?? "Cynthia Jones";
+  const initials = displayName
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <div className="flex h-screen overflow-hidden bg-light text-brown">
@@ -55,13 +65,29 @@ export default function Shell() {
 
         <div className="border-t border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-clay font-bold text-brown">
-              CJ
-            </div>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold">Cynthia Jones</p>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={displayName}
+                className="h-9 w-9 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-clay font-bold text-brown">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-sm font-semibold">{displayName}</p>
               <p className="text-[11px] text-clay">Founder</p>
             </div>
+            <button
+              onClick={logout}
+              title="Sign out"
+              className="rounded-lg p-1.5 text-cream/60 transition hover:bg-white/10 hover:text-cream"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>

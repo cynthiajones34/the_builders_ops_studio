@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createBrowserRouter, Navigate } from "react-router-dom";
 import "./index.css";
 import Shell from "./components/Shell";
+import AuthGate from "./components/AuthGate";
+import { AuthProvider } from "./lib/AuthContext";
 import { sections } from "./nav";
 
 const router = createBrowserRouter(
@@ -22,6 +24,10 @@ const router = createBrowserRouter(
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <AuthGate>
+        <RouterProvider router={router} />
+      </AuthGate>
+    </AuthProvider>
   </React.StrictMode>
 );
