@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 // Public web config for the-builders-ops-studio Firebase project.
 // The apiKey is NOT a secret (Firebase web keys identify the project, they
@@ -17,6 +18,8 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+// Region must match the Cloud Functions region (see functions/src/index.ts).
+export const functions = getFunctions(app, "us-central1");
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope("email");

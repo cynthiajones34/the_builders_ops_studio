@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Sparkles, X, Send } from "lucide-react";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../lib/firebase";
 
 const suggestedPrompts = [
   "What should I focus on this week?",
@@ -9,15 +11,12 @@ const suggestedPrompts = [
   "What am I neglecting?",
 ];
 
-// Canned, brand-voiced responses for the prototype (no backend yet).
-const cannedReply =
-  "Three things matter most this week.\n\n" +
-  "First, Maya at Sankofa Wellness is your fastest close. The proposal's been out 6 days and her last note read warm. Send the one-line nudge today.\n\n" +
-  "Second, you have enough raw material from Tuesday's strategy call for two LinkedIn posts and a newsletter. The onboarding-system story is the strongest. Draft it before the thread goes cold.\n\n" +
-  "Third, you haven't touched the Atlanta Founders intro in 11 days. That's a warm referral going lukewarm.\n\n" +
-  "Everything else can wait.";
-
 type Msg = { role: "user" | "ai"; text: string };
+
+const askAdvisor = httpsCallable<
+  { messages: Msg[]; context?: string },
+  { text: string }
+>(functions, "askAdvisor");
 
 export default function AssistantPanel({
   open,
@@ -28,11 +27,30 @@ export default function AssistantPanel({
 }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function send(text: string) {
-    if (!text.trim()) return;
-    setMsgs((m) => [...m, { role: "user", text }, { role: "ai", text: cannedReply }]);
+  async function send(text: string) {
+    if (!text.trim() || loading) return;
+    const next: Msg[] = [...msgs, { role: "user", text }];
+    setMsgs(next);
     setInput("");
+    setLoading(true);
+    try {
+      const res = await askAdvisor({ messages: next });
+      setMsgs((m) => [...m, { role: "ai", text: res.data.text }]);
+    } catch (e: any) {
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "ai",
+          text:
+            e?.message ??
+            "The advisor couldn't respond just now. Try again in a moment.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -97,6 +115,13 @@ export default function AssistantPanel({
               {m.text}
             </div>
           ))}
+          {loading && (
+            <div className="flex items-center gap-1.5 rounded-2xl bg-light px-4 py-3">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-clay [animation-delay:-0.3s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-clay [animation-delay:-0.15s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-clay" />
+            </div>
+          )}
         </div>
 
         <div className="border-t border-sand p-4">
@@ -116,7 +141,7 @@ export default function AssistantPanel({
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-brown-mid/60">
-            Prototype responses. Wired to Claude in Phase 2.
+            Powered by Claude. Your data stays private to your account.
           </p>
         </div>
       </aside>

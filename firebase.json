@@ -8,10 +8,16 @@
       "README.md",
       "CHANGELOG.md",
       "VERSION",
-      "admin-portal/**"
+      "admin-portal/**",
+      "functions/**"
     ],
     "rewrites": [
       { "source": "/admin/**", "destination": "/admin/index.html" }
     ]
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22",
+    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
   }
 }

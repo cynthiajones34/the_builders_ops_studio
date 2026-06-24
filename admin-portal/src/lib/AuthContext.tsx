@@ -7,7 +7,8 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   type User,
 } from "firebase/auth";
@@ -29,51 +30,59 @@ function isAllowed(user: User | null) {
   return !!email && ALLOWED_EMAILS.map((e) => e.toLowerCase()).includes(email);
 }
 
+function messageFor(code: string, fallback?: string) {
+  const messages: Record<string, string> = {
+    "auth/operation-not-allowed":
+      "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
+    "auth/configuration-not-found":
+      "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
+    "auth/unauthorized-domain":
+      "This domain isn't authorized. Add it in Authentication → Settings → Authorized domains.",
+    "auth/network-request-failed":
+      "Network error reaching Firebase. Check your connection and try again.",
+  };
+  return (messages[code] ?? fallback ?? "Sign-in failed.") + (code ? `  (${code})` : "");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
+
+    // Complete a redirect sign-in (if we're returning from Google) and enforce
+    // the email allowlist on the redirected account.
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user && !isAllowed(result.user)) {
+          await signOut(auth);
+          setError(
+            `${result.user.email} isn't authorized for this portal. Sign in with your BOS account.`
+          );
+        }
+      })
+      .catch((e: any) => {
+        console.error("[auth] redirect result failed:", e?.code, e);
+        setError(messageFor(e?.code ?? "", e?.message));
+      });
+
+    return unsub;
   }, []);
 
+  // Redirect-based sign-in. Works on GitHub Pages (no popup, so the
+  // Cross-Origin-Opener-Policy header can't block it).
   async function signIn() {
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (!isAllowed(result.user)) {
-        await signOut(auth);
-        setError(
-          `${result.user.email} isn't authorized for this portal. Sign in with your BOS account.`
-        );
-      }
+      await signInWithRedirect(auth, googleProvider);
     } catch (e: any) {
-      const code: string = e?.code ?? "";
-      console.error("[auth] sign-in failed:", code, e);
-      // User just closed/cancelled the popup; not an error worth showing.
-      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request")
-        return;
-
-      const messages: Record<string, string> = {
-        "auth/operation-not-allowed":
-          "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
-        "auth/configuration-not-found":
-          "Google sign-in isn't enabled. In the Firebase console: Authentication → Sign-in method → Google → Enable.",
-        "auth/unauthorized-domain":
-          "This domain isn't authorized. Add it in Authentication → Settings → Authorized domains.",
-        "auth/popup-blocked":
-          "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
-        "auth/network-request-failed":
-          "Network error reaching Firebase. Check your connection and try again.",
-      };
-      setError(
-        (messages[code] ?? e?.message ?? "Sign-in failed.") +
-          (code ? `  (${code})` : "")
-      );
+      console.error("[auth] sign-in failed:", e?.code, e);
+      setError(messageFor(e?.code ?? "", e?.message));
     }
   }
 
