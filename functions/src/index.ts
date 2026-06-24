@@ -2,6 +2,9 @@ import { onCall, HttpsError } from "firebase-functions/https";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
 
+// Gmail → Email Intelligence integration (OAuth + sync + categorization).
+export { gmailAuthUrl, gmailOauthCallback, syncGmail } from "./gmail";
+
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
 // Only these accounts may call the AI backend. Mirrors the client allowlist;

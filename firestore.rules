@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Command Center data layer. Everything is locked to the two authorized BOS
+// accounts, and each account can only read its own tree. Cloud Functions use
+// the Admin SDK, which bypasses these rules, so all writes (and the Gmail
+// refresh token under /private) stay server-side only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function authorized() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'cynthia@thebuildersopsstudio.com',
+          'cynthiajones34@gmail.com'
+        ];
+    }
+
+    // Categorized inbox, written by the syncGmail function.
+    match /users/{uid}/emails/{doc} {
+      allow read: if authorized() && request.auth.uid == uid;
+    }
+
+    // Connection + last-sync state the UI reads to know if Gmail is linked.
+    match /users/{uid}/meta/{doc} {
+      allow read: if authorized() && request.auth.uid == uid;
+    }
+
+    // Refresh tokens (users/{uid}/private/**), oauthStates/**, and anything
+    // else default to deny for clients: no rule grants access.
+  }
+}
