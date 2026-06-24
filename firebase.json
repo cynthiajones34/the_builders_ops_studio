@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "README.md",
+      "CHANGELOG.md",
+      "VERSION",
+      "admin-portal/**"
+    ],
+    "rewrites": [
+      { "source": "/admin/**", "destination": "/admin/index.html" }
+    ]
+  }
+}
