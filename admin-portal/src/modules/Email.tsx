@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Mail, Sparkles, Star, RefreshCw, AlertCircle } from "lucide-react";
 import { collection, doc, onSnapshot } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
-import { db, functions } from "../lib/firebase";
+import { db } from "../lib/firebase";
+import { callApi } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 
 type EmailDoc = {
@@ -42,9 +42,6 @@ const DOT: Record<string, string> = {
   warning: "#B8860B",
   neutral: "#E8DCC8",
 };
-
-const getAuthUrl = httpsCallable<void, { url: string }>(functions, "gmailAuthUrl");
-const syncGmailFn = httpsCallable<void, { count: number }>(functions, "syncGmail");
 
 function senderName(from: string) {
   const m = from.match(/^\s*"?([^"<]+?)"?\s*<.*>$/);
@@ -100,7 +97,7 @@ export default function Email() {
     setBusy("sync");
     setError(null);
     try {
-      await syncGmailFn();
+      await callApi<{ count: number }>("syncGmail");
     } catch (e: any) {
       setError(e?.message ?? "Sync failed. Try again.");
     } finally {
@@ -127,8 +124,8 @@ export default function Email() {
     setBusy("connect");
     setError(null);
     try {
-      const { data } = await getAuthUrl();
-      window.location.assign(data.url);
+      const { url } = await callApi<{ url: string }>("gmailAuthUrl");
+      window.location.assign(url);
     } catch (e: any) {
       setError(e?.message ?? "Couldn't start the Gmail connection.");
       setBusy(null);

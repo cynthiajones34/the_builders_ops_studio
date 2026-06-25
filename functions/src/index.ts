@@ -1,18 +1,12 @@
-import { onCall, HttpsError } from "firebase-functions/https";
+import { onRequest } from "firebase-functions/https";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
+import { CORS_ORIGINS, HttpError, requireUser } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
 export { gmailAuthUrl, gmailOauthCallback, syncGmail } from "./gmail";
 
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
-
-// Only these accounts may call the AI backend. Mirrors the client allowlist;
-// this is the real enforcement (the client check is just UX).
-const ALLOWED_EMAILS = [
-  "cynthia@thebuildersopsstudio.com",
-  "cynthiajones34@gmail.com",
-];
 
 // Cynthia's brand voice, from the BOS Brand Guide 2026. Every AI word the
 // portal produces runs through this so it sounds like her, not a chatbot.
@@ -32,49 +26,33 @@ When she asks what to focus on, give her a short, prioritized answer: the two or
 
 type ChatMessage = { role: "user" | "ai"; text: string };
 
-function assertAuthorized(auth: { token?: { email?: string } } | undefined) {
-  const email = auth?.token?.email?.toLowerCase();
-  if (!email || !ALLOWED_EMAILS.map((e) => e.toLowerCase()).includes(email)) {
-    throw new HttpsError(
-      "permission-denied",
-      "This account isn't authorized for the BOS Command Center."
-    );
-  }
-}
-
 /**
  * Conversational strategic advisor. Takes the running chat plus optional
- * page/business context and returns Claude's reply in Cynthia's voice.
+ * page/business context and returns Claude's reply in Cynthia's voice. Called
+ * over HTTP through a Firebase Hosting rewrite (see firebase.json).
  */
-export const askAdvisor = onCall(
-  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: true },
-  async (request) => {
-    assertAuthorized(request.auth);
-
-    const history: ChatMessage[] = Array.isArray(request.data?.messages)
-      ? request.data.messages
-      : [];
-    const context: string =
-      typeof request.data?.context === "string" ? request.data.context : "";
-
-    if (history.length === 0) {
-      throw new HttpsError("invalid-argument", "No messages provided.");
-    }
-
-    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
-
-    const system = context
-      ? `${BRAND_VOICE}\n\nCurrent context she's looking at:\n${context}`
-      : BRAND_VOICE;
-
-    const messages = history
-      .filter((m) => m && typeof m.text === "string" && m.text.trim())
-      .map((m) => ({
-        role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
-        content: m.text,
-      }));
-
+export const askAdvisor = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, invoker: "private" },
+  async (req, res) => {
     try {
+      await requireUser(req);
+
+      const history: ChatMessage[] = Array.isArray(req.body?.messages) ? req.body.messages : [];
+      const context: string = typeof req.body?.context === "string" ? req.body.context : "";
+      if (history.length === 0) throw new HttpError(400, "No messages provided.");
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = context
+        ? `${BRAND_VOICE}\n\nCurrent context she's looking at:\n${context}`
+        : BRAND_VOICE;
+
+      const messages = history
+        .filter((m) => m && typeof m.text === "string" && m.text.trim())
+        .map((m) => ({
+          role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
+          content: m.text,
+        }));
+
       const response = await anthropic.messages.create({
         model: "claude-opus-4-8",
         max_tokens: 4096,
@@ -86,10 +64,13 @@ export const askAdvisor = onCall(
         .map((b) => b.text)
         .join("\n")
         .trim();
-      return { text };
+      res.json({ text });
     } catch (err: any) {
-      console.error("askAdvisor: Claude call failed", err?.status, err?.message);
-      throw new HttpsError("internal", "The advisor couldn't respond. Try again.");
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("askAdvisor failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "The advisor couldn't respond. Try again." : err.message,
+      });
     }
   }
 );

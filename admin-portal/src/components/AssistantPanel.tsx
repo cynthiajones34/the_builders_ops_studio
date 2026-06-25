@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Sparkles, X, Send } from "lucide-react";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../lib/firebase";
+import { callApi } from "../lib/api";
 
 const suggestedPrompts = [
   "What should I focus on this week?",
@@ -12,11 +11,6 @@ const suggestedPrompts = [
 ];
 
 type Msg = { role: "user" | "ai"; text: string };
-
-const askAdvisor = httpsCallable<
-  { messages: Msg[]; context?: string },
-  { text: string }
->(functions, "askAdvisor");
 
 export default function AssistantPanel({
   open,
@@ -36,8 +30,8 @@ export default function AssistantPanel({
     setInput("");
     setLoading(true);
     try {
-      const res = await askAdvisor({ messages: next });
-      setMsgs((m) => [...m, { role: "ai", text: res.data.text }]);
+      const res = await callApi<{ text: string }>("askAdvisor", { messages: next });
+      setMsgs((m) => [...m, { role: "ai", text: res.text }]);
     } catch (e: any) {
       setMsgs((m) => [
         ...m,
