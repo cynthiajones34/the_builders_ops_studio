@@ -7,11 +7,45 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Card, Eyebrow, SectionTitle, Badge, Stat, Button } from "../components/ui";
-import { priorities, healthMetrics, briefing, revenueTrend } from "../data/mock";
+import { priorities, healthMetrics, revenueTrend } from "../data/mock";
+import { callApi } from "../lib/api";
+
+type Briefing = {
+  priorities: string[];
+  actions: string[];
+  followups: string[];
+  opportunities: string[];
+  risks: string[];
+  grounded?: boolean;
+};
+
+const todayLabel = new Date().toLocaleDateString([], {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
 
 export default function Dashboard() {
+  const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [briefingState, setBriefingState] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let active = true;
+    callApi<Briefing>("dailyBriefing")
+      .then((b) => {
+        if (!active) return;
+        setBriefing(b);
+        setBriefingState("ready");
+      })
+      .catch(() => active && setBriefingState("error"));
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
@@ -19,7 +53,7 @@ export default function Dashboard() {
         sub="Here's what matters today. Everything else can wait."
         right={
           <Button variant="secondary">
-            {briefing.date} <ArrowRight size={15} />
+            {todayLabel} <ArrowRight size={15} />
           </Button>
         }
       />
@@ -54,11 +88,30 @@ export default function Dashboard() {
               AI Daily Briefing
             </p>
           </div>
-          <BriefBlock label="Top priorities" items={briefing.priorities} />
-          <BriefBlock label="Recommended actions" items={briefing.actions} />
-          <BriefBlock label="Follow-ups needed" items={briefing.followups} />
-          <BriefBlock label="Opportunities" items={briefing.opportunities} />
-          <BriefBlock label="Risks / overdue" items={briefing.risks} danger />
+
+          {briefingState === "loading" && (
+            <p className="text-sm text-cream/70">Reading your inbox and writing today's briefing…</p>
+          )}
+          {briefingState === "error" && (
+            <p className="text-sm text-cream/80">
+              The briefing couldn't load just now. Refresh in a moment.
+            </p>
+          )}
+          {briefingState === "ready" && briefing && briefing.grounded === false && (
+            <p className="text-sm leading-snug text-cream/90">
+              Connect Gmail on the Email Intelligence page and your morning briefing will run on
+              your real inbox.
+            </p>
+          )}
+          {briefingState === "ready" && briefing && briefing.grounded !== false && (
+            <>
+              <BriefBlock label="Top priorities" items={briefing.priorities} />
+              <BriefBlock label="Recommended actions" items={briefing.actions} />
+              <BriefBlock label="Follow-ups needed" items={briefing.followups} />
+              <BriefBlock label="Opportunities" items={briefing.opportunities} />
+              <BriefBlock label="Risks / overdue" items={briefing.risks} danger />
+            </>
+          )}
         </Card>
       </div>
 

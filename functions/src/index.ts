@@ -1,7 +1,7 @@
 import { onRequest } from "firebase-functions/https";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
-import { CORS_ORIGINS, HttpError, requireUser } from "./shared";
+import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
 export { gmailAuthUrl, gmailOauthCallback, syncGmail } from "./gmail";
@@ -26,13 +26,108 @@ When she asks what to focus on, give her a short, prioritized answer: the two or
 
 type ChatMessage = { role: "user" | "ai"; text: string };
 
+type Briefing = {
+  priorities: string[];
+  actions: string[];
+  followups: string[];
+  opportunities: string[];
+  risks: string[];
+};
+const EMPTY_BRIEFING: Briefing = {
+  priorities: [],
+  actions: [],
+  followups: [],
+  opportunities: [],
+  risks: [],
+};
+
+/**
+ * Morning briefing for the dashboard. Grounded in the real connected inbox
+ * (the data we actually have so far), summarized by Claude in Cynthia's voice
+ * into the five buckets the dashboard renders.
+ */
+export const dailyBriefing = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+
+      const snap = await db.collection(`users/${uid}/emails`).get();
+      const emails = snap.docs.map((d) => d.data() as any);
+
+      // No real data yet: tell her how to light it up rather than inventing.
+      if (emails.length === 0) {
+        res.json({
+          ...EMPTY_BRIEFING,
+          actions: ["Connect Gmail on the Email Intelligence page so the briefing runs on your real inbox."],
+          grounded: false,
+        });
+        return;
+      }
+
+      const inbox = emails
+        .map((e) => `- [${e.category}${e.priority ? ", PRIORITY" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+        .join("\n");
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+Write Cynthia's morning briefing from her current inbox. Be concrete and reference real senders and subjects. Don't invent meetings, revenue, or deadlines that aren't in the data.
+
+Return ONLY JSON with this exact shape, each value an array of 1 to 4 short strings (no em dashes, never start a line with "I"):
+{"priorities":[],"actions":[],"followups":[],"opportunities":[],"risks":[]}
+- priorities: the few things that matter most today.
+- actions: specific next actions she should take.
+- followups: people or threads waiting on her.
+- opportunities: revenue, speaking, or partnership openings worth pursuing.
+- risks: anything overdue or at risk of slipping. Empty array if none.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 1500,
+        system,
+        messages: [{ role: "user", content: `Today's inbox:\n${inbox}` }],
+      });
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+
+      let parsed: Partial<Briefing> = {};
+      try {
+        parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+      } catch {
+        parsed = {};
+      }
+      const clean = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+
+      res.json({
+        priorities: clean(parsed.priorities),
+        actions: clean(parsed.actions),
+        followups: clean(parsed.followups),
+        opportunities: clean(parsed.opportunities),
+        risks: clean(parsed.risks),
+        grounded: true,
+      });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("dailyBriefing failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "The briefing couldn't be generated. Try again." : err.message,
+      });
+    }
+  }
+);
+
 /**
  * Conversational strategic advisor. Takes the running chat plus optional
  * page/business context and returns Claude's reply in Cynthia's voice. Called
  * over HTTP through a Firebase Hosting rewrite (see firebase.json).
  */
 export const askAdvisor = onRequest(
-  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, invoker: "private" },
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
       await requireUser(req);
