@@ -26,6 +26,11 @@ service cloud.firestore {
       allow read: if authorized() && request.auth.uid == uid;
     }
 
+    // Opportunities, written by the findOpportunities function.
+    match /users/{uid}/opportunities/{doc} {
+      allow read: if authorized() && request.auth.uid == uid;
+    }
+
     // Connection + last-sync state the UI reads to know if Gmail is linked.
     match /users/{uid}/meta/{doc} {
       allow read: if authorized() && request.auth.uid == uid;

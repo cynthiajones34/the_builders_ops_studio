@@ -9,8 +9,8 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { Card, Eyebrow, SectionTitle, Badge, Stat, Button } from "../components/ui";
-import { priorities, healthMetrics, revenueTrend } from "../data/mock";
+import { Card, Eyebrow, SectionTitle, Stat, Button } from "../components/ui";
+import { healthMetrics, revenueTrend } from "../data/mock";
 import { callApi } from "../lib/api";
 
 type Briefing = {
@@ -58,7 +58,13 @@ export default function Dashboard() {
         }
       />
 
-      {/* Health metrics */}
+      {/* Health metrics (sample until revenue/CRM are connected) */}
+      <div className="mb-1 flex items-center gap-2">
+        <Eyebrow>Business Health</Eyebrow>
+        <span className="rounded-full bg-sand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brown-mid">
+          Sample
+        </span>
+      </div>
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {healthMetrics.map((m) => (
           <Stat key={m.label} label={m.label} value={m.value} delta={m.delta} tone={m.tone} />
@@ -66,17 +72,29 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Today's priorities */}
+        {/* Today's priorities (real, from the AI briefing) */}
         <Card className="lg:col-span-2">
           <Eyebrow>Today's Priorities</Eyebrow>
-          <div className="mt-2 divide-y divide-sand">
-            {priorities.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 py-3">
-                <Badge tone={p.tone as any}>{p.type}</Badge>
-                <p className="flex-1 text-sm font-medium text-brown">{p.text}</p>
-                <span className="text-xs text-brown-mid">{p.meta}</span>
-              </div>
-            ))}
+          <div className="mt-2">
+            {briefingState === "loading" && (
+              <p className="py-3 text-sm text-brown-mid">Pulling today's priorities from your inbox…</p>
+            )}
+            {briefingState === "error" && (
+              <p className="py-3 text-sm text-brown-mid">Couldn't load priorities. Refresh in a moment.</p>
+            )}
+            {briefingState === "ready" && (briefing?.priorities?.length ?? 0) === 0 && (
+              <p className="py-3 text-sm text-brown-mid">
+                Connect Gmail and sync meetings, and your priorities surface here automatically.
+              </p>
+            )}
+            <div className="divide-y divide-sand">
+              {briefing?.priorities?.map((p, i) => (
+                <div key={i} className="flex items-start gap-3 py-3">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-clay" />
+                  <p className="flex-1 text-sm font-medium text-brown">{p}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
 
@@ -119,12 +137,16 @@ export default function Dashboard() {
       <Card className="mt-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <Eyebrow>Business Health</Eyebrow>
+            <div className="flex items-center gap-2">
+              <Eyebrow>Revenue Trend</Eyebrow>
+              <span className="rounded-full bg-sand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brown-mid">
+                Sample
+              </span>
+            </div>
             <h2 className="font-display text-xl font-bold text-brown">
               Revenue pipeline vs. closed
             </h2>
           </div>
-          <Badge tone="positive">+12% MoM</Badge>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">

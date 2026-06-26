@@ -26,6 +26,186 @@ When she asks what to focus on, give her a short, prioritized answer: the two or
 
 type ChatMessage = { role: "user" | "ai"; text: string };
 
+/**
+ * Opportunity Engine. Reads the connected inbox + meeting readouts and has
+ * Claude surface and rank the real revenue, speaking, partnership, and referral
+ * openings across them, each with a suggested next move.
+ */
+export const findOpportunities = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+
+      const [emailSnap, meetingSnap] = await Promise.all([
+        db.collection(`users/${uid}/emails`).get(),
+        db.collection(`users/${uid}/meetings`).get(),
+      ]);
+      const emails = emailSnap.docs.map((d) => d.data() as any);
+      const meetings = meetingSnap.docs.map((d) => d.data() as any);
+
+      if (emails.length === 0 && meetings.length === 0) {
+        res.json({ count: 0, opportunities: [], grounded: false });
+        return;
+      }
+
+      const emailCtx = emails
+        .map((e) => `- [${e.category}${e.priority ? ", priority" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+        .join("\n");
+      const meetingCtx = meetings
+        .map((m) => {
+          const opps = (m.opportunities ?? []).join("; ");
+          return `- ${m.title}: ${m.summary ?? ""}${opps ? ` | opportunities: ${opps}` : ""}`;
+        })
+        .join("\n");
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+Surface the real business opportunities hiding in Cynthia's inbox and meetings: revenue, new clients, speaking, partnerships, referrals, and productized offers. Only use what's in the data. Don't invent. Merge duplicates that show up in more than one place (call that out as stronger signal).
+
+Return ONLY a JSON array, ranked best first, max 8 items, each:
+{"type":"<Workshop|Speaking|Partnership|Referral|Potential Client|Productized Offer|Media>","title":"<short>","evidence":"<which emails/meetings point to this, one sentence>","value":"<rough $ or strategic value>","nextAction":"<the single next move, name it>"}`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 2000,
+        system,
+        messages: [
+          {
+            role: "user",
+            content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}`,
+          },
+        ],
+      });
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+
+      let parsed: any[] = [];
+      try {
+        parsed = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1));
+      } catch {
+        parsed = [];
+      }
+      const opps = (Array.isArray(parsed) ? parsed : [])
+        .filter((o) => o && typeof o.title === "string")
+        .map((o) => ({
+          type: typeof o.type === "string" ? o.type : "Opportunity",
+          title: o.title,
+          evidence: typeof o.evidence === "string" ? o.evidence : "",
+          value: typeof o.value === "string" ? o.value : "",
+          nextAction: typeof o.nextAction === "string" ? o.nextAction : "",
+        }));
+
+      const col = db.collection(`users/${uid}/opportunities`);
+      const existing = await col.get();
+      const batch = db.batch();
+      existing.forEach((d) => batch.delete(d.ref));
+      opps.forEach((o) => batch.set(col.doc(), o));
+      batch.set(
+        db.doc(`users/${uid}/meta/opportunities`),
+        { lastRun: Date.now(), count: opps.length },
+        { merge: true }
+      );
+      await batch.commit();
+
+      res.json({ count: opps.length, grounded: true });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("findOpportunities failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "Couldn't scan for opportunities. Try again." : err.message,
+      });
+    }
+  }
+);
+
+/**
+ * Intelligence Reports. Daily / weekly / monthly readout built live from the
+ * connected inbox + meetings, returned as labeled blocks for the Reports tab.
+ */
+export const generateReport = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+      const period: "daily" | "weekly" | "monthly" = ["daily", "weekly", "monthly"].includes(
+        req.body?.period
+      )
+        ? req.body.period
+        : "weekly";
+
+      const [emailSnap, meetingSnap] = await Promise.all([
+        db.collection(`users/${uid}/emails`).get(),
+        db.collection(`users/${uid}/meetings`).get(),
+      ]);
+      const emails = emailSnap.docs.map((d) => d.data() as any);
+      const meetings = meetingSnap.docs.map((d) => d.data() as any);
+
+      if (emails.length === 0 && meetings.length === 0) {
+        res.json({ period, grounded: false, blocks: [] });
+        return;
+      }
+
+      const emailCtx = emails
+        .map((e) => `- [${e.category}${e.priority ? ", priority" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+        .join("\n");
+      const meetingCtx = meetings
+        .map((m) => `- ${m.title}: ${m.summary ?? ""}${(m.opportunities ?? []).length ? ` | opportunities: ${(m.opportunities ?? []).join("; ")}` : ""}${(m.actions ?? []).length ? ` | actions: ${(m.actions ?? []).join("; ")}` : ""}`)
+        .join("\n");
+
+      const shape: Record<typeof period, string> = {
+        daily: "blocks for: Priorities, Opportunities, Follow-ups",
+        weekly: "blocks for: Wins, Pipeline & Opportunities, Themes, Follow-ups",
+        monthly: "blocks for: Trends, Themes, Strategy",
+      };
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+Write Cynthia's ${period} intelligence report, grounded only in the inbox and meetings below. Be specific, reference real names and topics, don't invent numbers or revenue that aren't in the data.
+
+Produce ${shape[period]}.
+Return ONLY JSON: {"blocks":[{"label":"<block name>","items":["<short line>", ...]}]}. 3 to 4 items per block, no em dashes, never start a line with "I".`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 2000,
+        system,
+        messages: [
+          { role: "user", content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}` },
+        ],
+      });
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+
+      let blocks: { label: string; items: string[] }[] = [];
+      try {
+        const p = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+        blocks = (Array.isArray(p.blocks) ? p.blocks : [])
+          .filter((b: any) => b && typeof b.label === "string" && Array.isArray(b.items))
+          .map((b: any) => ({ label: b.label, items: b.items.filter((x: any) => typeof x === "string") }));
+      } catch {
+        blocks = [];
+      }
+
+      res.json({ period, grounded: true, blocks });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("generateReport failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "Couldn't build the report. Try again." : err.message,
+      });
+    }
+  }
+);
+
 type Briefing = {
   priorities: string[];
   actions: string[];

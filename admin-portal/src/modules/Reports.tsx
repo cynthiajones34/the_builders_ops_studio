@@ -1,103 +1,132 @@
-import { useState } from "react";
-import { FileBarChart, Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
-import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
+import { useEffect, useState } from "react";
+import { FileBarChart, AlertCircle } from "lucide-react";
+import { Card, Eyebrow, SectionTitle, Button } from "../components/ui";
+import { callApi } from "../lib/api";
 
-const reports = {
-  Daily: {
-    blurb: "Tuesday, June 23",
-    blocks: [
-      { label: "Priorities", items: ["Close loop with Maya", "Ship Glow Up SOP", "Approve LinkedIn post"] },
-      { label: "Opportunities", items: ["AI workshop demand building", "Speaking invite from Atlanta Founders"] },
-      { label: "Tasks", items: ["9 open, 2 overdue", "Invoice #1043 past due"] },
-    ],
-  },
-  Weekly: {
-    blurb: "Week of June 16–22",
-    blocks: [
-      { label: "Wins", items: ["Closed Glow Up onboarding ($5K)", "TikTok up 22%", "Best LinkedIn post of the quarter"] },
-      { label: "Pipeline", items: ["+$12K added (Sankofa proposal)", "5 SDR leads, 2 qualified"] },
-      { label: "Content", items: ["Mindset pillar driving 38% of engagement", "3 posts shipped, 1 newsletter"] },
-      { label: "Revenue ops", items: ["AI workshop offer worth building", "Glow Up retainer upsell open"] },
-    ],
-  },
-  Monthly: {
-    blurb: "June 2026",
-    blocks: [
-      { label: "Trends", items: ["Pipeline up 12% MoM, 6 months straight", "Wellness niche emerging as best-fit ICP"] },
-      { label: "Growth", items: ["Followers +183% YoY", "Engagement +0.6 pts", "Email list +14%"] },
-      { label: "Strategy", items: ["Productize 'Onboarding System in a Week'", "Lean into client-story content", "Raise retainer floor. Demand supports it"] },
-    ],
-  },
-};
+type Period = "daily" | "weekly" | "monthly";
+type Block = { label: string; items: string[] };
+type Report = { blocks: Block[]; grounded: boolean };
 
-const extras = [
-  { icon: AlertTriangle, title: "Client Health", note: "Sankofa at risk: proposal idle 6 days. All others healthy.", tone: "warning" },
-  { icon: TrendingUp, title: "Revenue Forecast", note: "Projected $62K next 90 days from pipeline + renewals (78% confidence).", tone: "positive" },
-  { icon: Sparkles, title: "AI Offer Generator", note: "Recurring pain: onboarding chaos. Suggested offer: 'Onboarding System in a Week.'", tone: "clay" },
+const TABS: { key: Period; label: string }[] = [
+  { key: "daily", label: "Daily" },
+  { key: "weekly", label: "Weekly" },
+  { key: "monthly", label: "Monthly" },
 ];
 
+function blurbFor(period: Period) {
+  const now = new Date();
+  if (period === "daily")
+    return now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  if (period === "monthly")
+    return now.toLocaleDateString([], { month: "long", year: "numeric" });
+  const start = new Date(now);
+  start.setDate(now.getDate() - 6);
+  const opts = { month: "short", day: "numeric" } as const;
+  return `Week of ${start.toLocaleDateString([], opts)} – ${now.toLocaleDateString([], opts)}`;
+}
+
 export default function Reports() {
-  const [tab, setTab] = useState<keyof typeof reports>("Weekly");
-  const r = reports[tab];
+  const [tab, setTab] = useState<Period>("weekly");
+  const [cache, setCache] = useState<Record<string, Report>>({});
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cache[tab]) {
+      setState("ready");
+      return;
+    }
+    let active = true;
+    setState("loading");
+    setError(null);
+    callApi<{ blocks: Block[]; grounded: boolean }>("generateReport", { period: tab })
+      .then((r) => {
+        if (!active) return;
+        setCache((c) => ({ ...c, [tab]: { blocks: r.blocks ?? [], grounded: r.grounded } }));
+        setState("ready");
+      })
+      .catch((e: any) => {
+        if (!active) return;
+        setError(e?.message ?? "Couldn't build the report.");
+        setState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [tab, cache]);
+
+  const report = cache[tab];
 
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Intelligence Reports"
-        sub="Your business, summarized. Daily priorities, weekly momentum, monthly strategy."
-        right={
-          <Button variant="secondary">
-            <FileBarChart size={15} /> Export
-          </Button>
-        }
+        sub="Your business, summarized from your real email and meetings. Daily priorities, weekly momentum, monthly strategy."
       />
 
       <div className="mb-5 flex gap-1 rounded-xl border border-sand bg-cream p-1">
-        {(Object.keys(reports) as (keyof typeof reports)[]).map((t) => (
+        {TABS.map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              tab === t ? "bg-brown text-cream" : "text-brown-mid hover:bg-clay-light"
+              tab === t.key ? "bg-brown text-cream" : "text-brown-mid hover:bg-clay-light"
             }`}
           >
-            {t} Report
+            {t.label} Report
           </button>
         ))}
       </div>
 
-      <Card className="mb-6">
-        <Eyebrow>{tab} Report · {r.blurb}</Eyebrow>
-        <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {r.blocks.map((b) => (
-            <div key={b.label}>
-              <p className="mb-2 text-sm font-bold text-clay">{b.label}</p>
-              <ul className="space-y-1.5">
-                {b.items.map((it, i) => (
-                  <li key={i} className="flex gap-2 text-sm leading-snug text-brown">
-                    <span className="text-clay">›</span>
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <Card>
+        <Eyebrow>
+          {TABS.find((t) => t.key === tab)?.label} Report · {blurbFor(tab)}
+        </Eyebrow>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {extras.map((e) => (
-          <Card key={e.title}>
-            <div className="mb-2 flex items-center gap-2">
-              <e.icon size={16} className="text-clay" />
-              <p className="text-[11px] font-bold uppercase tracking-wider text-brown-mid">
-                {e.title}
-              </p>
+        {state === "loading" && (
+          <p className="mt-4 text-sm text-brown-mid">Reading your email and meetings, writing the report…</p>
+        )}
+
+        {state === "error" && (
+          <div className="mt-4 flex items-start gap-2">
+            <AlertCircle size={16} className="mt-0.5 text-copper" />
+            <div>
+              <p className="text-sm text-brown">{error}</p>
+              <Button variant="secondary" className="mt-3" onClick={() => setTab(tab)}>
+                <FileBarChart size={15} /> Try again
+              </Button>
             </div>
-            <p className="text-sm leading-snug text-brown">{e.note}</p>
-          </Card>
-        ))}
-      </div>
+          </div>
+        )}
+
+        {state === "ready" && report && report.grounded === false && (
+          <p className="mt-4 text-sm text-brown-mid">
+            Connect Gmail and sync your meetings first, then your reports build themselves from the
+            real activity.
+          </p>
+        )}
+
+        {state === "ready" && report && report.grounded !== false && (
+          <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {report.blocks.length === 0 && (
+              <p className="text-sm text-brown-mid">Nothing to report for this period yet.</p>
+            )}
+            {report.blocks.map((b) => (
+              <div key={b.label}>
+                <p className="mb-2 text-sm font-bold text-clay">{b.label}</p>
+                <ul className="space-y-1.5">
+                  {b.items.map((it, i) => (
+                    <li key={i} className="flex gap-2 text-sm leading-snug text-brown">
+                      <span className="text-clay">›</span>
+                      {it}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
