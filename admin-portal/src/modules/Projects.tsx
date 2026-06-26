@@ -1,76 +1,126 @@
-import { Sparkles, ArrowRight } from "lucide-react";
-import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
-import { projects } from "../data/mock";
+import { useEffect, useState } from "react";
+import { RefreshCw, AlertCircle } from "lucide-react";
+import { Card, SectionTitle, Badge, Button } from "../components/ui";
+import { callApi } from "../lib/api";
 
-const healthTone: Record<string, any> = { good: "positive", watch: "warning", risk: "danger" };
+type Project = {
+  name: string;
+  client?: string;
+  status: string;
+  summary?: string;
+  nextSteps?: string[];
+  source?: string;
+};
+
+const statusTone: Record<string, any> = {
+  "on track": "positive",
+  "needs attention": "danger",
+  waiting: "warning",
+};
 
 export default function Projects() {
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [grounded, setGrounded] = useState(true);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setState("loading");
+    setError(null);
+    try {
+      const r = await callApi<{ projects: Project[]; grounded: boolean }>("generateProjects");
+      setProjects(r.projects ?? []);
+      setGrounded(r.grounded);
+      setState("ready");
+    } catch (e: any) {
+      setError(e?.message ?? "Couldn't build projects.");
+      setState("error");
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Projects"
-        sub="Every meeting updates the right project automatically. Ask the assistant for status, what's overdue, or next steps."
-        right={<Button>New project</Button>}
+        sub="Active workstreams pulled from your meetings and email. Every conversation updates where things stand."
+        right={
+          <Button variant="secondary" onClick={() => state !== "loading" && load()}>
+            <RefreshCw size={15} className={state === "loading" ? "animate-spin" : ""} />
+            {state === "loading" ? "Reading…" : "Refresh"}
+          </Button>
+        }
       />
 
-      <Card className="mb-6 bg-brown text-cream">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-clay" />
-          <p className="text-[11px] font-bold uppercase tracking-wider text-clay">
-            Ask the Project Assistant
-          </p>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[
-            "What's overdue?",
-            "Status of Glow Up?",
-            "What was discussed last month?",
-            "What are the next steps for Bloom?",
-          ].map((q) => (
-            <button
-              key={q}
-              className="rounded-full border border-clay/40 px-3 py-1.5 text-sm text-cream/90 hover:bg-white/5"
-            >
-              {q}
-            </button>
+      {state === "loading" && (
+        <Card className="py-12 text-center text-sm text-brown-mid">
+          Reading your meetings and inbox, pulling out what's in motion…
+        </Card>
+      )}
+
+      {state === "error" && (
+        <Card className="flex items-start gap-2 border-copper bg-clay-light">
+          <AlertCircle size={16} className="mt-0.5 text-copper" />
+          <p className="text-sm text-brown">{error}</p>
+        </Card>
+      )}
+
+      {state === "ready" && !grounded && (
+        <Card className="py-12 text-center text-sm text-brown-mid">
+          Connect Gmail and sync your meetings first, then your active projects build themselves
+          from the activity.
+        </Card>
+      )}
+
+      {state === "ready" && grounded && projects && projects.length === 0 && (
+        <Card className="py-12 text-center text-sm text-brown-mid">
+          No active workstreams surfaced from recent activity.
+        </Card>
+      )}
+
+      {state === "ready" && grounded && projects && projects.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {projects.map((p, i) => (
+            <Card key={i} className="flex flex-col">
+              <div className="flex items-start justify-between">
+                <div>
+                  {p.client && (
+                    <p className="text-[11px] uppercase tracking-wider text-clay">{p.client}</p>
+                  )}
+                  <h2 className="font-display text-lg font-bold leading-snug text-brown">
+                    {p.name}
+                  </h2>
+                </div>
+                <Badge tone={statusTone[p.status] ?? "neutral"}>{p.status}</Badge>
+              </div>
+
+              {p.summary && <p className="mt-2 text-sm text-brown-mid">{p.summary}</p>}
+
+              {p.nextSteps && p.nextSteps.length > 0 && (
+                <div className="mt-3 border-t border-sand pt-3">
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brown-mid">
+                    Next steps
+                  </p>
+                  <ul className="space-y-1">
+                    {p.nextSteps.map((s, j) => (
+                      <li key={j} className="flex gap-1.5 text-sm leading-snug text-brown">
+                        <span className="text-clay">·</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {p.source && <p className="mt-3 text-[11px] italic text-brown-mid/70">From {p.source}</p>}
+            </Card>
           ))}
         </div>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {projects.map((p, i) => (
-          <Card key={i}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-clay">{p.client}</p>
-                <h2 className="font-display text-lg font-bold leading-snug text-brown">
-                  {p.name}
-                </h2>
-              </div>
-              <Badge tone={healthTone[p.health]}>{p.status}</Badge>
-            </div>
-
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-sand">
-              <div
-                className="h-full rounded-full bg-clay"
-                style={{ width: `${p.progress}%` }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between text-xs text-brown-mid">
-              <span>{p.progress}% complete</span>
-              <span>Due {p.due}</span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between border-t border-sand pt-3">
-              <p className="text-sm text-brown">
-                <span className="font-semibold text-clay">Next: </span>
-                {p.next}
-              </p>
-              <ArrowRight size={15} className="text-brown-mid" />
-            </div>
-          </Card>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

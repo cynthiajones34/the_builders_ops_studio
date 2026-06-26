@@ -1,42 +1,72 @@
-import { useState } from "react";
-import { Sparkles, Repeat, Calendar, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, Repeat, Calendar, ArrowRight, AlertCircle, Copy } from "lucide-react";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
-import { contentIdeas, calendar } from "../data/mock";
+import { calendar } from "../data/mock";
+import { callApi } from "../lib/api";
 
-const draft = `She already knows her business is going to work.
-
-That belief is real. It's what got her here.
-
-But belief alone doesn't build systems.
-
-You're not disorganized. You're under-systemized.
-
-I had a client turning away work because she couldn't keep up with onboarding. What she needed wasn't more hustle. She needed a system that ran without her.
-
-We documented one onboarding flow. Three new clients the following month, and she never touched the intake herself.
-
-What closes the gap is structure.
-
-#blackwomenentrepreneurs #smallbusinessoperations #buildersopsstudio`;
-
-const repurpose = [
-  { to: "Instagram carousel", note: "6 slides, hook on slide 1" },
-  { to: "TikTok script", note: "45-sec voiceover, single insight" },
-  { to: "Substack article", note: "Expand the client story into 600 words" },
-  { to: "Email newsletter", note: "Short reflection + one takeaway" },
-];
+type Idea = { pillar: string; format: string; hook: string; source: string };
+type Repurpose = { to: string; content: string };
 
 export default function Content() {
   const [tab, setTab] = useState<"ideas" | "draft" | "calendar">("ideas");
+
+  const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [ideasGrounded, setIdeasGrounded] = useState(true);
+  const [ideasState, setIdeasState] = useState<"loading" | "ready" | "error">("loading");
+  const [ideasError, setIdeasError] = useState<string | null>(null);
+
+  const [selected, setSelected] = useState<Idea | null>(null);
+  const [draft, setDraft] = useState("");
+  const [repurpose, setRepurpose] = useState<Repurpose[]>([]);
+  const [draftState, setDraftState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function loadIdeas() {
+    setIdeasState("loading");
+    setIdeasError(null);
+    try {
+      const r = await callApi<{ ideas: Idea[]; grounded: boolean }>("generateContent");
+      setIdeas(r.ideas ?? []);
+      setIdeasGrounded(r.grounded);
+      setIdeasState("ready");
+    } catch (e: any) {
+      setIdeasError(e?.message ?? "Couldn't generate ideas.");
+      setIdeasState("error");
+    }
+  }
+
+  useEffect(() => {
+    loadIdeas();
+  }, []);
+
+  async function draftIt(idea: Idea) {
+    setSelected(idea);
+    setTab("draft");
+    setDraftState("loading");
+    setDraftError(null);
+    try {
+      const r = await callApi<{ draft: string; repurpose: Repurpose[] }>("draftContent", {
+        hook: idea.hook,
+        pillar: idea.pillar,
+        format: idea.format,
+      });
+      setDraft(r.draft ?? "");
+      setRepurpose(r.repurpose ?? []);
+      setDraftState("ready");
+    } catch (e: any) {
+      setDraftError(e?.message ?? "Couldn't draft this.");
+      setDraftState("error");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Content Studio"
-        sub="Your personal content strategist. Ideas pulled from your meetings, emails, and what's already resonating."
+        sub="Your personal content strategist. Ideas pulled from your real meetings and emails."
         right={
-          <Button>
-            <Sparkles size={15} /> Generate from this week
+          <Button onClick={() => ideasState !== "loading" && loadIdeas()}>
+            <Sparkles size={15} /> {ideasState === "loading" ? "Generating…" : "Generate from this week"}
           </Button>
         }
       />
@@ -56,78 +86,125 @@ export default function Content() {
       </div>
 
       {tab === "ideas" && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {contentIdeas.map((idea, i) => (
-            <Card key={i} className="flex flex-col">
-              <div className="flex items-center justify-between">
-                <Badge tone="clay">{idea.pillar}</Badge>
-                <span className="text-[11px] text-brown-mid">{idea.format}</span>
-              </div>
-              <p className="mt-3 font-display text-lg font-semibold leading-snug text-brown">
-                "{idea.hook}"
-              </p>
-              <p className="mt-2 text-xs italic text-clay">{idea.source}</p>
-              <div className="mt-auto flex gap-2 pt-4">
-                <Button variant="secondary" className="!py-1.5 text-xs">
-                  Draft it <ArrowRight size={13} />
-                </Button>
-                <Button variant="ghost" className="!py-1.5 text-xs">
-                  Save idea
-                </Button>
-              </div>
+        <>
+          {ideasState === "loading" && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Reading your meetings and inbox for what's worth posting…
             </Card>
-          ))}
-        </div>
+          )}
+          {ideasState === "error" && (
+            <Card className="flex items-start gap-2 border-copper bg-clay-light">
+              <AlertCircle size={16} className="mt-0.5 text-copper" />
+              <p className="text-sm text-brown">{ideasError}</p>
+            </Card>
+          )}
+          {ideasState === "ready" && !ideasGrounded && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Connect Gmail and sync your meetings first, then your content ideas come from your
+              real conversations.
+            </Card>
+          )}
+          {ideasState === "ready" && ideasGrounded && ideas && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {ideas.map((idea, i) => (
+                <Card key={i} className="flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <Badge tone="clay">{idea.pillar}</Badge>
+                    <span className="text-[11px] text-brown-mid">{idea.format}</span>
+                  </div>
+                  <p className="mt-3 font-display text-lg font-semibold leading-snug text-brown">
+                    "{idea.hook}"
+                  </p>
+                  {idea.source && <p className="mt-2 text-xs italic text-clay">From {idea.source}</p>}
+                  <div className="mt-auto flex gap-2 pt-4">
+                    <Button variant="secondary" className="!py-1.5 text-xs" onClick={() => draftIt(idea)}>
+                      Draft it <ArrowRight size={13} />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {tab === "draft" && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <Card className="lg:col-span-3">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge tone="clay">LinkedIn</Badge>
-                <Badge>Molly Graham framework</Badge>
-              </div>
-              <span className="text-[11px] text-positive">198 words • on-brand ✓</span>
-            </div>
-            <textarea
-              defaultValue={draft}
-              className="h-[420px] w-full resize-none rounded-xl border border-sand bg-light p-4 text-sm leading-relaxed text-brown outline-none focus:border-clay"
-            />
-            <div className="mt-3 flex gap-2">
-              <Button>Approve + schedule</Button>
-              <Button variant="secondary">
-                <Sparkles size={14} /> Rewrite
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="lg:col-span-2">
-            <div className="mb-2 flex items-center gap-2">
-              <Repeat size={16} className="text-clay" />
-              <Eyebrow>AI Repurposing</Eyebrow>
-            </div>
-            <p className="mb-4 text-sm text-brown-mid">
-              Turn this one post into your whole week.
-            </p>
-            <div className="space-y-2">
-              {repurpose.map((r) => (
-                <div
-                  key={r.to}
-                  className="flex items-center justify-between rounded-lg border border-sand bg-light px-3 py-2.5 hover:border-clay"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-brown">{r.to}</p>
-                    <p className="text-[11px] text-brown-mid">{r.note}</p>
+        <>
+          {draftState === "idle" && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Pick an idea on Content Suggestions and hit "Draft it" to write a post here.
+            </Card>
+          )}
+          {draftState === "loading" && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Writing your post in your voice…
+            </Card>
+          )}
+          {draftState === "error" && (
+            <Card className="flex items-start gap-2 border-copper bg-clay-light">
+              <AlertCircle size={16} className="mt-0.5 text-copper" />
+              <p className="text-sm text-brown">{draftError}</p>
+            </Card>
+          )}
+          {draftState === "ready" && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              <Card className="lg:col-span-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge tone="clay">{selected?.format ?? "Post"}</Badge>
+                    {selected && <Badge>{selected.pillar}</Badge>}
                   </div>
-                  <Button variant="ghost" className="!px-2 !py-1 text-xs">
-                    Generate
+                  <span className="text-[11px] text-brown-mid">
+                    {draft.trim().split(/\s+/).filter(Boolean).length} words
+                  </span>
+                </div>
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  className="h-[420px] w-full resize-none rounded-xl border border-sand bg-light p-4 text-sm leading-relaxed text-brown outline-none focus:border-clay"
+                />
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={() => navigator.clipboard?.writeText(draft)}>
+                    <Copy size={14} /> Copy
+                  </Button>
+                  <Button variant="secondary" onClick={() => selected && draftIt(selected)}>
+                    <Sparkles size={14} /> Rewrite
                   </Button>
                 </div>
-              ))}
+              </Card>
+
+              <Card className="lg:col-span-2">
+                <div className="mb-2 flex items-center gap-2">
+                  <Repeat size={16} className="text-clay" />
+                  <Eyebrow>AI Repurposing</Eyebrow>
+                </div>
+                <p className="mb-4 text-sm text-brown-mid">One post, your whole week.</p>
+                <div className="space-y-2">
+                  {repurpose.length === 0 && (
+                    <p className="text-sm italic text-brown-mid/60">No variants returned.</p>
+                  )}
+                  {repurpose.map((r) => (
+                    <div key={r.to} className="rounded-lg border border-sand bg-light px-3 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-brown">{r.to}</p>
+                        <button
+                          onClick={() => navigator.clipboard?.writeText(r.content)}
+                          className="text-brown-mid hover:text-clay"
+                          title="Copy"
+                        >
+                          <Copy size={13} />
+                        </button>
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-[11px] leading-snug text-brown-mid">
+                        {r.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
-          </Card>
-        </div>
+          )}
+        </>
       )}
 
       {tab === "calendar" && (
@@ -135,14 +212,15 @@ export default function Content() {
           <div className="mb-4 flex items-center gap-2">
             <Calendar size={16} className="text-clay" />
             <Eyebrow>This Week</Eyebrow>
+            <span className="rounded-full bg-sand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brown-mid">
+              Sample
+            </span>
           </div>
           <div className="grid grid-cols-5 gap-3">
             {calendar.map((d) => (
               <div key={d.day} className="rounded-xl border border-sand bg-light p-3">
                 <div className="mb-2 flex items-baseline justify-between">
-                  <p className="text-xs font-bold uppercase tracking-wider text-brown-mid">
-                    {d.day}
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-brown-mid">{d.day}</p>
                   <p className="text-[11px] font-semibold text-clay">{d.date}</p>
                 </div>
                 <div className="space-y-2">
@@ -150,10 +228,7 @@ export default function Content() {
                     <p className="text-[11px] italic text-brown-mid/50">Open slot</p>
                   )}
                   {d.items.map((it, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg bg-cream px-2 py-1.5 text-[11px] font-medium text-brown"
-                    >
+                    <div key={i} className="rounded-lg bg-cream px-2 py-1.5 text-[11px] font-medium text-brown">
                       {it.t}
                     </div>
                   ))}

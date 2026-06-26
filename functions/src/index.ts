@@ -123,6 +123,187 @@ Return ONLY a JSON array, ranked best first, max 8 items, each:
   }
 );
 
+async function readActivity(uid: string) {
+  const [emailSnap, meetingSnap] = await Promise.all([
+    db.collection(`users/${uid}/emails`).get(),
+    db.collection(`users/${uid}/meetings`).get(),
+  ]);
+  const emails = emailSnap.docs.map((d) => d.data() as any);
+  const meetings = meetingSnap.docs.map((d) => d.data() as any);
+  const emailCtx = emails
+    .map((e) => `- [${e.category}${e.priority ? ", priority" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+    .join("\n");
+  const meetingCtx = meetings
+    .map((m) => `- ${m.title}: ${m.summary ?? ""}${(m.actions ?? []).length ? ` | actions: ${(m.actions ?? []).join("; ")}` : ""}${(m.opportunities ?? []).length ? ` | opportunities: ${(m.opportunities ?? []).join("; ")}` : ""}`)
+    .join("\n");
+  return { emails, meetings, emailCtx, meetingCtx, empty: emails.length === 0 && meetings.length === 0 };
+}
+
+function parseText(content: Anthropic.Message["content"]) {
+  return content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+}
+
+/**
+ * Projects. Derives active workstreams from the connected meetings + inbox:
+ * what's moving, for whom, and the next steps. Honest about status, no fake
+ * progress bars or due dates.
+ */
+export const generateProjects = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+      const { emailCtx, meetingCtx, empty } = await readActivity(uid);
+      if (empty) {
+        res.json({ projects: [], grounded: false });
+        return;
+      }
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+Group Cynthia's real activity into active workstreams / projects. A project is a client engagement or initiative that shows up across meetings and emails (for example a client onboarding, an event, a launch). Only use what's in the data. Don't invent clients, dates, or progress percentages.
+
+Return ONLY JSON: {"projects":[{"name":"<short>","client":"<person/org or 'Internal'>","status":"<on track|needs attention|waiting>","summary":"<one sentence on where it stands>","nextSteps":["<short>", ...],"source":"<which meeting/email this came from>"}]}. Max 8 projects, 1 to 3 next steps each, no em dashes, never start a line with "I".`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 2000,
+        system,
+        messages: [{ role: "user", content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}` }],
+      });
+      const text = parseText(response.content);
+
+      let projects: any[] = [];
+      try {
+        const p = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+        projects = (Array.isArray(p.projects) ? p.projects : []).map((x: any) => ({
+          name: typeof x.name === "string" ? x.name : "Workstream",
+          client: typeof x.client === "string" ? x.client : "",
+          status: ["on track", "needs attention", "waiting"].includes(x.status) ? x.status : "on track",
+          summary: typeof x.summary === "string" ? x.summary : "",
+          nextSteps: Array.isArray(x.nextSteps) ? x.nextSteps.filter((s: any) => typeof s === "string") : [],
+          source: typeof x.source === "string" ? x.source : "",
+        }));
+      } catch {
+        projects = [];
+      }
+      res.json({ projects, grounded: true });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("generateProjects failed", err?.message);
+      res.status(status).json({ error: status >= 500 ? "Couldn't build projects. Try again." : err.message });
+    }
+  }
+);
+
+/**
+ * Content Studio: suggestions. Mines the real meetings + inbox for post ideas
+ * in Cynthia's pillars, each tied back to the source that inspired it.
+ */
+export const generateContent = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+      const { emailCtx, meetingCtx, empty } = await readActivity(uid);
+      if (empty) {
+        res.json({ ideas: [], grounded: false });
+        return;
+      }
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+You are her content strategist. Pull post ideas from her real meetings and emails, for her audience of Black women entrepreneurs who need operational control. Ground every idea in something real that happened. Don't invent stories.
+
+Return ONLY JSON: {"ideas":[{"pillar":"<Mindset|Systems|Client Story|Strategy|Behind the Scenes>","format":"<LinkedIn post|Reel|Carousel|Newsletter|TikTok>","hook":"<the actual scroll-stopping first line>","source":"<the meeting or email this came from>"}]}. Give 6 ideas, no em dashes, never start the hook with "I".`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 2000,
+        system,
+        messages: [{ role: "user", content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}` }],
+      });
+      const text = parseText(response.content);
+
+      let ideas: any[] = [];
+      try {
+        const p = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+        ideas = (Array.isArray(p.ideas) ? p.ideas : []).map((x: any) => ({
+          pillar: typeof x.pillar === "string" ? x.pillar : "Systems",
+          format: typeof x.format === "string" ? x.format : "LinkedIn post",
+          hook: typeof x.hook === "string" ? x.hook : "",
+          source: typeof x.source === "string" ? x.source : "",
+        }));
+      } catch {
+        ideas = [];
+      }
+      res.json({ ideas, grounded: true });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("generateContent failed", err?.message);
+      res.status(status).json({ error: status >= 500 ? "Couldn't generate ideas. Try again." : err.message });
+    }
+  }
+);
+
+/**
+ * Content Studio: draft + repurpose. Turns one idea into an on-brand post plus
+ * platform variants.
+ */
+export const draftContent = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      await requireUser(req);
+      const hook = typeof req.body?.hook === "string" ? req.body.hook : "";
+      const pillar = typeof req.body?.pillar === "string" ? req.body.pillar : "";
+      const format = typeof req.body?.format === "string" ? req.body.format : "LinkedIn post";
+      if (!hook) throw new HttpError(400, "No idea provided to draft.");
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+      const system = `${BRAND_VOICE}
+
+Write a finished ${format} for Cynthia from the idea below, in her voice. Then repurpose it for other channels.
+
+Return ONLY JSON: {"draft":"<the full post, ready to publish, with line breaks as \\n>","repurpose":[{"to":"Instagram carousel","content":"..."},{"to":"TikTok script","content":"..."},{"to":"Newsletter","content":"..."}]}. No em dashes anywhere. Never start a sentence with "I".`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 2500,
+        system,
+        messages: [{ role: "user", content: `Pillar: ${pillar}\nFormat: ${format}\nHook/idea: ${hook}` }],
+      });
+      const text = parseText(response.content);
+
+      let out = { draft: "", repurpose: [] as { to: string; content: string }[] };
+      try {
+        const p = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+        out = {
+          draft: typeof p.draft === "string" ? p.draft : "",
+          repurpose: Array.isArray(p.repurpose)
+            ? p.repurpose
+                .filter((r: any) => r && typeof r.to === "string" && typeof r.content === "string")
+                .map((r: any) => ({ to: r.to, content: r.content }))
+            : [],
+        };
+      } catch {
+        out = { draft: text, repurpose: [] };
+      }
+      res.json(out);
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("draftContent failed", err?.message);
+      res.status(status).json({ error: status >= 500 ? "Couldn't draft this. Try again." : err.message });
+    }
+  }
+);
+
 /**
  * Intelligence Reports. Daily / weekly / monthly readout built live from the
  * connected inbox + meetings, returned as labeled blocks for the Reports tab.
