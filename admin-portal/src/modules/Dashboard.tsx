@@ -7,11 +7,14 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { useEffect, useState } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Sparkles, Circle, CheckCircle2 } from "lucide-react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { Card, Eyebrow, SectionTitle, Stat, Button } from "../components/ui";
 import { healthMetrics, revenueTrend } from "../data/mock";
 import { callApi } from "../lib/api";
+import { db } from "../lib/firebase";
+import { useAuth } from "../lib/AuthContext";
 
 type Briefing = {
   priorities: string[];
@@ -27,10 +30,16 @@ const todayLabel = new Date().toLocaleDateString([], {
   month: "long",
   day: "numeric",
 });
+// Local YYYY-MM-DD, so checked-off priorities reset with a new day.
+const now = new Date();
+const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [briefingState, setBriefingState] = useState<"loading" | "ready" | "error">("loading");
+  const [doneList, setDoneList] = useState<string[]>([]);
+  const [doneDate, setDoneDate] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -45,6 +54,34 @@ export default function Dashboard() {
       active = false;
     };
   }, []);
+
+  // Persisted checked-off priorities for today.
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(doc(db, "users", user.uid, "state", "dashboard"), (snap) => {
+      const d = snap.exists() ? (snap.data() as any) : {};
+      setDoneList(Array.isArray(d.completedPriorities) ? d.completedPriorities : []);
+      setDoneDate(typeof d.completedDate === "string" ? d.completedDate : "");
+    });
+  }, [user]);
+
+  const done = useMemo(
+    () => new Set(doneDate === todayKey ? doneList : []),
+    [doneList, doneDate]
+  );
+
+  async function completePriority(text: string) {
+    if (!user) return;
+    const next = new Set(done);
+    next.add(text);
+    await setDoc(
+      doc(db, "users", user.uid, "state", "dashboard"),
+      { completedPriorities: [...next], completedDate: todayKey },
+      { merge: true }
+    );
+  }
+
+  const visiblePriorities = (briefing?.priorities ?? []).filter((p) => !done.has(p));
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -87,10 +124,24 @@ export default function Dashboard() {
                 Connect Gmail and sync meetings, and your priorities surface here automatically.
               </p>
             )}
+            {briefingState === "ready" &&
+              (briefing?.priorities?.length ?? 0) > 0 &&
+              visiblePriorities.length === 0 && (
+                <p className="py-3 text-sm text-brown-mid">
+                  All caught up. Every priority checked off for today.
+                </p>
+              )}
             <div className="divide-y divide-sand">
-              {briefing?.priorities?.map((p, i) => (
-                <div key={i} className="flex items-start gap-3 py-3">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-clay" />
+              {visiblePriorities.map((p, i) => (
+                <div key={i} className="group flex items-start gap-3 py-3">
+                  <button
+                    onClick={() => completePriority(p)}
+                    title="Mark complete"
+                    className="mt-0.5 shrink-0 text-brown-mid transition hover:text-positive"
+                  >
+                    <Circle size={18} className="group-hover:hidden" />
+                    <CheckCircle2 size={18} className="hidden text-positive group-hover:block" />
+                  </button>
                   <p className="flex-1 text-sm font-medium text-brown">{p}</p>
                 </div>
               ))}

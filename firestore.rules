@@ -31,6 +31,16 @@ service cloud.firestore {
       allow read: if authorized() && request.auth.uid == uid;
     }
 
+    // Knowledge Base resources, added by the owner from the client.
+    match /users/{uid}/knowledge/{doc} {
+      allow read, create, update, delete: if authorized() && request.auth.uid == uid;
+    }
+
+    // Lightweight UI state (e.g. checked-off priorities), owned by the user.
+    match /users/{uid}/state/{doc} {
+      allow read, write: if authorized() && request.auth.uid == uid;
+    }
+
     // Connection + last-sync state the UI reads to know if Gmail is linked.
     match /users/{uid}/meta/{doc} {
       allow read: if authorized() && request.auth.uid == uid;
