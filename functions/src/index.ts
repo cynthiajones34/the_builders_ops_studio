@@ -210,24 +210,47 @@ export const generateContent = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const { emailCtx, meetingCtx, empty } = await readActivity(uid);
-      if (empty) {
-        res.json({ ideas: [], grounded: false });
-        return;
-      }
+      const focus = typeof req.body?.focus === "string" ? req.body.focus.trim().slice(0, 300) : "";
+      const { emailCtx, meetingCtx } = await readActivity(uid);
+      // Ideas can stand on her expertise alone, so we don't hard-block on empty
+      // activity. Real activity is raw material, not a requirement.
 
       const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
       const system = `${BRAND_VOICE}
 
-You are her content strategist. Pull post ideas from her real meetings and emails, for her audience of Black women entrepreneurs who need operational control. Ground every idea in something real that happened. Don't invent stories.
+You are Cynthia's content strategist. Her audience is Black women entrepreneurs who are great at their craft but under-systemized. Her job is to give them operational control without shame.
 
-Return ONLY JSON: {"ideas":[{"pillar":"<Mindset|Systems|Client Story|Strategy|Behind the Scenes>","format":"<LinkedIn post|Reel|Carousel|Newsletter|TikTok>","hook":"<the actual scroll-stopping first line>","source":"<the meeting or email this came from>"}]}. Give 6 ideas, no em dashes, never start the hook with "I".`;
+Her four content pillars:
+- Operations: systems, onboarding, delegation, the back end of a business.
+- Mindset: the emotional side of growth, asking for help, worthiness, capacity.
+- Behind the Build: what she's automating, building, or learning in her own business.
+- Client Story: a real transformation (only use one if it actually appears in her data below).
+
+What a great hook looks like (this is the bar, match this energy):
+- "She had the clients. She didn't have a way to keep up."
+- "Asking for help isn't admitting something went wrong."
+- "What I automated this week so I didn't have to."
+- "Turning away work because onboarding couldn't keep up."
+
+Hook rules:
+- Short. One or two sentences. A reframe or a tension, not a summary.
+- Speak to the reader or tell a story. No recap language like "we discussed" or "in a recent meeting".
+- Specific and human. Cut anything generic.
+
+Use her real activity below as raw material for themes and angles. You may also draw on her operating expertise for strong evergreen ideas. Never invent a specific client, number, or event that isn't in the data; when there's no real story, write a principle or insight instead.${focus ? `\n\nThis week she especially wants to talk about: ${focus}. Lean most ideas toward that.` : ""}
+
+Return ONLY JSON: {"ideas":[{"pillar":"<Operations|Mindset|Behind the Build|Client Story>","format":"<LinkedIn post|Reel|Carousel|Newsletter|TikTok>","hook":"<the actual first line, in her voice>","source":"<the real meeting/email it draws on, or the pillar/theme if evergreen>"}]}. Give 6 ideas, varied across pillars, no em dashes, never start a hook with "I".`;
 
       const response = await anthropic.messages.create({
         model: "claude-opus-4-8",
         max_tokens: 2000,
         system,
-        messages: [{ role: "user", content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}` }],
+        messages: [
+          {
+            role: "user",
+            content: `Her recent activity (raw material):\nInbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}`,
+          },
+        ],
       });
       const text = parseText(response.content);
 

@@ -14,6 +14,7 @@ export default function Content() {
   const [ideasGrounded, setIdeasGrounded] = useState(true);
   const [ideasState, setIdeasState] = useState<"loading" | "ready" | "error">("loading");
   const [ideasError, setIdeasError] = useState<string | null>(null);
+  const [focus, setFocus] = useState("");
 
   const [selected, setSelected] = useState<Idea | null>(null);
   const [draft, setDraft] = useState("");
@@ -25,7 +26,7 @@ export default function Content() {
     setIdeasState("loading");
     setIdeasError(null);
     try {
-      const r = await callApi<{ ideas: Idea[]; grounded: boolean }>("generateContent");
+      const r = await callApi<{ ideas: Idea[]; grounded: boolean }>("generateContent", { focus });
       setIdeas(r.ideas ?? []);
       setIdeasGrounded(r.grounded);
       setIdeasState("ready");
@@ -87,6 +88,19 @@ export default function Content() {
 
       {tab === "ideas" && (
         <>
+          <div className="mb-5 flex gap-2">
+            <input
+              value={focus}
+              onChange={(e) => setFocus(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ideasState !== "loading" && loadIdeas()}
+              placeholder="Optional: what do you want to talk about this week? (e.g. onboarding, pricing, burnout)"
+              className="flex-1 rounded-xl border border-sand bg-cream px-4 py-2.5 text-sm text-brown outline-none placeholder:text-brown-mid/50 focus:border-clay"
+            />
+            <Button variant="secondary" onClick={() => ideasState !== "loading" && loadIdeas()}>
+              <Sparkles size={15} /> Generate
+            </Button>
+          </div>
+
           {ideasState === "loading" && (
             <Card className="py-12 text-center text-sm text-brown-mid">
               Reading your meetings and inbox for what's worth posting…
