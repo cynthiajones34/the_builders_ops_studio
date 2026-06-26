@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
-export { gmailAuthUrl, gmailOauthCallback, syncGmail } from "./gmail";
+export { gmailAuthUrl, gmailOauthCallback, syncGmail, syncMeetings } from "./gmail";
 
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 

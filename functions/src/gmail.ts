@@ -19,8 +19,12 @@ const REDIRECT_URI = "https://the-builders-ops-studio.web.app/api/gmailOauthCall
 // Where the user lands in the portal after the callback finishes.
 const PORTAL_RETURN_URL = "https://www.thebuildersopsstudio.com/admin/#/email";
 
-// Read-only access to the inbox. Nothing is ever sent or deleted.
-const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+// Read-only access only. Gmail for Email Intelligence; Drive for reading the
+// Gemini meeting-notes docs (Meeting Intelligence). Nothing is ever written.
+const SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/drive.readonly",
+];
 
 // The fixed taxonomy the inbox gets sorted into. Mirrors the prototype.
 const CATEGORIES = [
@@ -50,7 +54,6 @@ export const gmailAuthUrl = onRequest(
     secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET],
     region: REGION,
     cors: CORS_ORIGINS,
-    invoker: "private",
   },
   async (req, res) => {
     try {
@@ -62,7 +65,7 @@ export const gmailAuthUrl = onRequest(
       const url = oauthClient().generateAuthUrl({
         access_type: "offline",
         prompt: "consent", // force a refresh_token even on re-auth
-        scope: [GMAIL_SCOPE],
+        scope: SCOPES,
         state,
       });
 
@@ -87,7 +90,6 @@ export const gmailOauthCallback = onRequest(
   {
     secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET],
     region: REGION,
-    invoker: "private",
   },
   async (req, res) => {
     const fail = (reason: string) => {
@@ -157,7 +159,6 @@ export const syncGmail = onRequest(
     secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, ANTHROPIC_API_KEY],
     region: REGION,
     cors: CORS_ORIGINS,
-    invoker: "private",
     timeoutSeconds: 300,
   },
   async (req, res) => {
@@ -289,4 +290,148 @@ Return ONLY a JSON array, one object per input id, shape:
       why: typeof c?.why === "string" ? c.why : "",
     };
   });
+}
+
+/**
+ * Meeting Intelligence. Reads the user's Gemini meeting-notes / transcript docs
+ * from Google Drive (read-only), and has Claude turn each into a summary plus
+ * action items, decisions, and opportunities, stored for the Meetings module.
+ */
+export const syncMeetings = onRequest(
+  {
+    secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, ANTHROPIC_API_KEY],
+    region: REGION,
+    cors: CORS_ORIGINS,
+    timeoutSeconds: 300,
+  },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+
+      const tokenSnap = await db.doc(`users/${uid}/private/gmail`).get();
+      const refreshToken = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
+      if (!refreshToken) throw new HttpError(412, "Connect your Google account first.");
+
+      const client = oauthClient();
+      client.setCredentials({ refresh_token: refreshToken });
+      const drive = google.drive({ version: "v3", auth: client });
+
+      const since = new Date(Date.now() - 45 * 24 * 3600 * 1000).toISOString();
+      let files;
+      try {
+        const list = await drive.files.list({
+          q:
+            `mimeType='application/vnd.google-apps.document' and trashed=false ` +
+            `and modifiedTime > '${since}' ` +
+            `and (name contains 'Notes by Gemini' or name contains 'Transcript')`,
+          orderBy: "modifiedTime desc",
+          pageSize: 20,
+          fields: "files(id,name,modifiedTime,webViewLink)",
+        });
+        files = list.data.files ?? [];
+      } catch {
+        // Most likely the Drive scope hasn't been granted on this connection yet.
+        throw new HttpError(
+          412,
+          "Reconnect your Google account to grant Drive access for meetings."
+        );
+      }
+
+      const meetings: any[] = [];
+      for (const f of files) {
+        let text = "";
+        try {
+          const exp = await drive.files.export(
+            { fileId: f.id!, mimeType: "text/plain" },
+            { responseType: "text" }
+          );
+          text = typeof exp.data === "string" ? exp.data : String(exp.data ?? "");
+        } catch {
+          continue;
+        }
+        if (!text.trim()) continue;
+
+        const extracted = await extractMeeting(f.name ?? "Meeting", text.slice(0, 24000));
+        meetings.push({
+          id: f.id!,
+          title: extracted.title || f.name || "Meeting",
+          date: f.modifiedTime ?? "",
+          summary: extracted.summary,
+          actions: extracted.actions,
+          decisions: extracted.decisions,
+          opportunities: extracted.opportunities,
+          docUrl: f.webViewLink ?? "",
+        });
+      }
+
+      const col = db.collection(`users/${uid}/meetings`);
+      const existing = await col.get();
+      const batch = db.batch();
+      existing.forEach((d) => batch.delete(d.ref));
+      for (const m of meetings) batch.set(col.doc(m.id), m);
+      batch.set(
+        db.doc(`users/${uid}/meta/meetings`),
+        { lastSync: Date.now(), count: meetings.length },
+        { merge: true }
+      );
+      await batch.commit();
+
+      res.json({ count: meetings.length });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("syncMeetings failed", err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "The meeting sync couldn't finish. Try again." : err.message,
+      });
+    }
+  }
+);
+
+type MeetingExtract = {
+  title: string;
+  summary: string;
+  actions: string[];
+  decisions: string[];
+  opportunities: string[];
+};
+
+async function extractMeeting(name: string, text: string): Promise<MeetingExtract> {
+  const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+  const system = `You read a meeting transcript or notes for Cynthia Jones, an Atlanta operations consultant (The Builders' Ops Studio). Turn it into a tight readout she can act on.
+
+Rules: no em dashes; short sentences; never start a line with "I"; be specific and reference real names and commitments from the notes; don't invent anything not in the text.
+
+Return ONLY JSON with this exact shape:
+{"title":"<short human meeting title>","summary":"<2 to 3 sentence summary>","actions":["..."],"decisions":["..."],"opportunities":["..."]}
+- actions: concrete next steps, with the owner in parentheses if the notes name one.
+- decisions: things that were decided. Empty array if none.
+- opportunities: revenue, speaking, partnership, or content openings worth pursuing. Empty array if none.`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 1500,
+    system,
+    messages: [{ role: "user", content: `Meeting doc "${name}":\n\n${text}` }],
+  });
+  const out = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+
+  const clean = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  try {
+    const p = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1));
+    return {
+      title: typeof p.title === "string" ? p.title : name,
+      summary: typeof p.summary === "string" ? p.summary : "",
+      actions: clean(p.actions),
+      decisions: clean(p.decisions),
+      opportunities: clean(p.opportunities),
+    };
+  } catch {
+    return { title: name, summary: "", actions: [], decisions: [], opportunities: [] };
+  }
 }
