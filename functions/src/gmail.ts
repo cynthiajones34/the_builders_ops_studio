@@ -122,14 +122,19 @@ export const gmailOauthCallback = onRequest(
         .users.getProfile({ userId: "me" });
       const connectedEmail = profile.data.emailAddress ?? null;
 
+      // Which scopes did they actually grant? The UI uses this to know whether
+      // Drive (meetings) is available, not just Gmail.
+      const grantedScopes = tokens.scope ?? "";
+
       // Refresh token: server-only path, never exposed to the client.
       await db.doc(`users/${uid}/private/gmail`).set({
         refreshToken: tokens.refresh_token,
         connectedEmail,
+        scopes: grantedScopes,
         connectedAt: Date.now(),
       });
       await db.doc(`users/${uid}/meta/gmail`).set(
-        { connected: true, connectedEmail, connectedAt: Date.now() },
+        { connected: true, connectedEmail, scopes: grantedScopes, connectedAt: Date.now() },
         { merge: true }
       );
 

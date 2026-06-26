@@ -35,7 +35,7 @@ function whenLabel(date?: string) {
 export default function Meetings() {
   const { user } = useAuth();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [connected, setConnected] = useState(false);
+  const [driveReady, setDriveReady] = useState(false);
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<null | "connect" | "sync">(null);
@@ -47,9 +47,11 @@ export default function Meetings() {
       setMeetings(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Meeting, "id">) })));
       setLoaded(true);
     });
-    // Connection state is shared with Gmail (same Google account / token).
+    // Meetings need Drive access. The Google connection is shared with Gmail,
+    // so gate on whether the granted scopes actually include Drive.
     const unsubConn = onSnapshot(doc(db, "users", user.uid, "meta", "gmail"), (snap) => {
-      setConnected(snap.exists() ? Boolean((snap.data() as any).connected) : false);
+      const scopes = snap.exists() ? String((snap.data() as any).scopes ?? "") : "";
+      setDriveReady(scopes.includes("drive"));
     });
     const unsubMeta = onSnapshot(doc(db, "users", user.uid, "meta", "meetings"), (snap) => {
       setLastSync(snap.exists() ? ((snap.data() as any).lastSync ?? null) : null);
@@ -99,7 +101,7 @@ export default function Meetings() {
         title="Meeting Intelligence"
         sub="Your Google Meet notes, read for you. Every meeting becomes action items, decisions, and opportunities."
         right={
-          connected ? (
+          driveReady ? (
             <Button variant="secondary" onClick={() => busy === null && sync()}>
               <RefreshCw size={15} className={busy === "sync" ? "animate-spin" : ""} />
               {busy === "sync" ? "Reading meetings…" : "Sync meetings"}
@@ -119,7 +121,7 @@ export default function Meetings() {
         </Card>
       )}
 
-      {loaded && !connected && (
+      {loaded && !driveReady && (
         <Card className="flex flex-col items-center justify-center py-16 text-center">
           <Video size={28} className="text-clay" />
           <p className="mt-3 max-w-md text-lg font-semibold text-brown">
@@ -135,7 +137,7 @@ export default function Meetings() {
         </Card>
       )}
 
-      {connected && (
+      {driveReady && (
         <>
           {lastSync && (
             <p className="mb-4 text-xs text-brown-mid">
