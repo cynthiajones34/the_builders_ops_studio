@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "firebase deploy --only hosting --config ../firebase.json",
     "preview": "vite preview"
   },
   "dependencies": {
