@@ -1,5 +1,6 @@
 test_contacts.csv,1782598122401,763be1acac5fde212e0d76948279cb0f400cf05aa495905b077f68a29b3a1474
 index.html,1782096295763,54fd0f06199c0e5b8c437317cf479f8b4b4976073db547a7780fa2afff6212d4
+firestore.rules,1782601135037,790913d3fd5de8ced7b8f1e4217ef96beec63e604e9ffc958c6610a4ccf1dd4d
 favicon.png,1781209606222,a01aae6726109aa66775a615d8795d11dd01c055d2f61d3955ff159bfaf41e3e
 bos-logo.png,1781209606221,47dffa1e72493574e0318d61a6668cfbcf128bc196c20de9677fbde2c2edf6ca
 Client_List.csv,1782598750041,0b217432467d5e6689a68b5c91db21ce27b03f1e5be19a780878313994da4f80
@@ -16526,10 +16527,9 @@ guides/yams-wellness-features-guide.md,1781288734429,f218541e2759b5a29dc841aa457
 .context/attachments/0miOWp/pasted_text_2026-06-18_19-35-13.txt,1781825713682,72d4e13aaf25342ac5f82cfec401f2434618968ffb477069ba83131c0f8fecc2
 .context/attachments/0YUDnv/session-transcript-8964082c-d16f-4926-bac6-355231357f92.md,1782568099550,fa5d772b1e7ff02c7aa684b45ed4712cfc97ed88301d765984fdb14f1f54caa7
 .claude/settings.local.json,1782600610380,40d9352a1e64b78e8cdb706aa1883b4e57b5e4cb4e3fac91c981bc1f22734902
-firestore.rules,1782601135037,790913d3fd5de8ced7b8f1e4217ef96beec63e604e9ffc958c6610a4ccf1dd4d
-admin/index.html,1782601142753,e72b2ba0a40fd7622517b86ba8485e113dd76369fe9bdaa5aeea5b1db2ad35a0
-admin/assets/index-DUD4kn4G.css,1782601142753,e887584d77ffca30533fbe8b5e6acee1626b16d9d574f5ed66b3c57ad3fd19d9
-admin/assets/index-D_RGxYEb.js,1782601142753,47ecd7762ff4d1bbf1d75d1cf08be8343e1a9c5c7b01c4fbc029d2f32e51f584
-.context/attachments/ENfG3T/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
+admin/index.html,1782601332972,f8561aec0555947436928b52f1c0d2c6d1e95e70b553538946d083f0dbcfa2d6
+admin/assets/index-DeoW1ree.css,1782601332972,de51d03b5313d71a9f27ea2db239b5079d8b3f39f4c2a07242b759355dd1b619
+admin/assets/index-Bw0MycUw.js,1782601332972,b50d2d547cb2c27a501c18eb088386d66db9b5144c23704b03da0c14b401fd2d
 .context/attachments/7reozK/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
+.context/attachments/ENfG3T/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
 .context/attachments/NVq4wF/Behind the Build, Episode 2_ Scoping. Everyone wants to jump to the tool. The real work happens before that, finding where your business actually breaks. The leads that go cold. The onboarding that lives in your emails. The work scattered a.mp4,1782306105365,bef989b45bf09abe1c44f93859376ecef77d69d3553f421912a067ed7ec3543a

@@ -23,6 +23,7 @@ type ProspectWithOutreach = {
   website_url?: string;
   research_summary?: string;
   pain_signals?: string[];
+  icp_fit?: string;
   outreach?: OutreachLog;
 };
 
@@ -124,22 +125,32 @@ export default function Pipeline() {
 
       {pendingOutreach.length > 0 && (
         <div className="space-y-4">
-          {pendingOutreach.map((prospect) => (
-            <Card key={prospect.outreach?.log_id} className="border-l-4 border-l-clay">
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-display text-lg font-bold text-brown">{prospect.business_name}</h3>
-                    {prospect.linkedin_url && (
-                      <a href={prospect.linkedin_url} target="_blank" rel="noreferrer" className="text-clay hover:text-copper">
-                        <ExternalLink size={14} />
-                      </a>
-                    )}
+          {pendingOutreach.map((prospect) => {
+            const icpStatus = prospect.icp_fit?.toLowerCase() || "unclear";
+            const icpColor = icpStatus === "yes" ? "positive" : icpStatus === "no" ? "warning" : "clay";
+            return (
+              <Card key={prospect.outreach?.log_id} className={`border-l-4 ${
+                icpStatus === "yes" ? "border-l-positive bg-positive/5" :
+                icpStatus === "no" ? "border-l-warning bg-warning/5" :
+                "border-l-clay"
+              }`}>
+                <div className="mb-4 flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-lg font-bold text-brown">{prospect.business_name}</h3>
+                      <Badge tone={icpColor}>
+                        {icpStatus === "yes" ? "✓ ICP Match" : icpStatus === "no" ? "✗ Not ICP" : "? Unclear"}
+                      </Badge>
+                      {prospect.linkedin_url && (
+                        <a href={prospect.linkedin_url} target="_blank" rel="noreferrer" className="text-clay hover:text-copper">
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-sm text-brown-mid">{prospect.owner_name}</p>
+                    <p className="text-xs text-brown-mid/60">{prospect.location}</p>
                   </div>
-                  <p className="text-sm text-brown-mid">{prospect.owner_name}</p>
-                  <p className="text-xs text-brown-mid/60">{prospect.location}</p>
                 </div>
-              </div>
 
               {prospect.research_summary && (
                 <div className="mb-4 rounded-lg bg-light p-3">
@@ -168,23 +179,24 @@ export default function Pipeline() {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  onClick={() => approveMessage(prospect.outreach?.log_id || "")}
-                  className={`flex-1 ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
-                >
-                  <Check size={16} /> Approve & Send
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => rejectMessage(prospect.outreach?.log_id || "")}
-                  className={`flex-1 text-warning hover:text-copper ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
-                >
-                  <X size={16} /> Decline
-                </Button>
-              </div>
-            </Card>
-          ))}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => approveMessage(prospect.outreach?.log_id || "")}
+                    className={`flex-1 ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
+                  >
+                    <Check size={16} /> Approve & Send
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => rejectMessage(prospect.outreach?.log_id || "")}
+                    className={`flex-1 text-warning hover:text-copper ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
+                  >
+                    <X size={16} /> Decline
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
