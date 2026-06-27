@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot } from "lucide-react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { Bot, Check, X } from "lucide-react";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
 import { db } from "../lib/firebase";
 import { useAuth } from "../lib/AuthContext";
@@ -12,6 +12,8 @@ type Prospect = {
   status: string;
   industry: string;
   created_at: string;
+  research_summary?: string;
+  pain_signals?: string[];
 };
 
 const stageTone: Record<string, any> = {
@@ -22,6 +24,7 @@ const stageTone: Record<string, any> = {
 };
 
 const statusToStage: Record<string, string> = {
+  pending: "Pending Approval",
   queued: "New Lead",
   flagged_review: "New Lead",
   approved: "Qualified",
@@ -37,6 +40,7 @@ export default function Pipeline() {
   const { user } = useAuth();
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -50,6 +54,34 @@ export default function Pipeline() {
     });
   }, [user]);
 
+  async function approveProspect(prospectId: string) {
+    if (!user) return;
+    setApproving(prospectId);
+    try {
+      await updateDoc(doc(db, "users", user.uid, "prospects", prospectId), {
+        status: "queued",
+      });
+    } finally {
+      setApproving(null);
+    }
+  }
+
+  async function rejectProspect(prospectId: string) {
+    if (!user) return;
+    setApproving(prospectId);
+    try {
+      await updateDoc(doc(db, "users", user.uid, "prospects", prospectId), {
+        status: "rejected",
+      });
+    } finally {
+      setApproving(null);
+    }
+  }
+
+  const pendingApproval = useMemo(() => {
+    return prospects.filter((p) => p.status === "pending");
+  }, [prospects]);
+
   const pipeline = useMemo(() => {
     const stages = ["New Lead", "Qualified", "Proposal", "Won"];
     const grouped: Record<string, Prospect[]> = {};
@@ -58,6 +90,7 @@ export default function Pipeline() {
     });
 
     prospects.forEach((p) => {
+      if (p.status === "pending") return;
       const stage = statusToStage[p.status] || "New Lead";
       if (grouped[stage]) {
         grouped[stage].push(p);
@@ -90,12 +123,56 @@ export default function Pipeline() {
           <p className="text-sm font-semibold text-brown">BOS SDR Agent</p>
           <p className="text-xs text-brown-mid">
             {loaded
-              ? `${prospects.length} prospects in pipeline. Last updated just now.`
+              ? `${prospects.length - pendingApproval.length} in pipeline. ${pendingApproval.length} awaiting approval.`
               : "Loading prospects..."}
           </p>
         </div>
         <Button variant="ghost">View agent</Button>
       </Card>
+
+      {pendingApproval.length > 0 && (
+        <Card className="mb-6 border-2 border-warning bg-warning/5">
+          <Eyebrow>Approval Queue</Eyebrow>
+          <p className="mt-1 mb-3 text-xs text-brown-mid">Review and approve prospects before they enter the pipeline.</p>
+          <div className="space-y-3">
+            {pendingApproval.map((prospect) => (
+              <div key={prospect.prospect_id} className="flex items-start gap-3 rounded-lg border border-sand bg-light p-3">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-brown">{prospect.business_name}</p>
+                  <p className="text-xs text-brown-mid">{prospect.owner_name}</p>
+                  {prospect.research_summary && (
+                    <p className="mt-1 text-xs leading-relaxed text-brown-mid">{prospect.research_summary}</p>
+                  )}
+                  {prospect.pain_signals && prospect.pain_signals.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {prospect.pain_signals.slice(0, 3).map((signal) => (
+                        <Badge key={signal} tone="warning">
+                          {signal}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    onClick={() => approveProspect(prospect.prospect_id)}
+                    className={`!px-2 !py-1.5 !text-xs ${approving === prospect.prospect_id ? "opacity-50" : ""}`}
+                  >
+                    <Check size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => rejectProspect(prospect.prospect_id)}
+                    className={`!px-2 !py-1.5 !text-xs text-warning hover:text-copper ${approving === prospect.prospect_id ? "opacity-50" : ""}`}
+                  >
+                    <X size={14} />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {loaded && prospects.length === 0 && (
         <Card className="py-12 text-center">
