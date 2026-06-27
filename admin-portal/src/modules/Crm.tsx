@@ -43,7 +43,8 @@ const TAGS = [
 
 type Contact = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email?: string;
   phone?: string;
   socialMedia?: string;
@@ -54,6 +55,10 @@ type Contact = {
   links?: { label: string; url: string }[];
   addedAt: number;
 };
+
+function getFullName(contact: Contact): string {
+  return `${contact.firstName} ${contact.lastName}`.trim();
+}
 
 const PHASE_COLOR: Record<Phase, string> = {
   Prospect: "bg-sand/80 text-brown-mid",
@@ -76,12 +81,25 @@ export default function Crm() {
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "users", user.uid, "contacts"), (snap) => {
-      const all = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Contact, "id">),
-        tags: Array.isArray(d.data().tags) ? d.data().tags : [],
-        links: Array.isArray(d.data().links) ? d.data().links : [],
-      }));
+      const all = snap.docs.map((d) => {
+        const data = d.data();
+        const firstName = data.firstName || data.name?.split(' ')[0] || '';
+        const lastName = data.lastName || data.name?.split(' ').slice(1).join(' ') || '';
+        return {
+          id: d.id,
+          firstName,
+          lastName,
+          email: data.email || '',
+          phone: data.phone || '',
+          socialMedia: data.socialMedia || '',
+          address: data.address || '',
+          phase: data.phase || 'Prospect',
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          notes: data.notes || '',
+          links: Array.isArray(data.links) ? data.links : [],
+          addedAt: data.addedAt || Date.now(),
+        } as Contact;
+      });
       setContacts(all);
       setLoaded(true);
       setOpenContact((prev) => (prev ? all.find((c) => c.id === prev.id) ?? null : null));
@@ -101,13 +119,13 @@ export default function Crm() {
       .filter(
         (c) =>
           !q ||
-          [c.name, c.email, c.phone, c.notes, ...c.tags]
+          [getFullName(c), c.email, c.phone, c.notes, ...c.tags]
             .filter(Boolean)
             .join(" ")
             .toLowerCase()
             .includes(q)
       )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => getFullName(a).localeCompare(getFullName(b)));
   }, [contacts, search, filterPhase]);
 
   async function removeContact(id: string) {
@@ -209,7 +227,7 @@ export default function Crm() {
                 className="grid w-full grid-cols-12 items-center px-5 py-3 text-left hover:bg-light"
               >
                 <div className="col-span-3">
-                  <p className="text-sm font-semibold text-brown">{c.name}</p>
+                  <p className="text-sm font-semibold text-brown">{getFullName(c)}</p>
                 </div>
                 <p className="col-span-2 truncate text-xs text-brown-mid">{c.email || ""}</p>
                 <p className="col-span-2 text-xs text-brown-mid">{c.phone || ""}</p>
@@ -236,7 +254,8 @@ export default function Crm() {
 }
 
 function AddContactForm({ uid, onDone }: { uid: string; onDone: () => void }) {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [socialMedia, setSocialMedia] = useState("");
@@ -251,11 +270,12 @@ function AddContactForm({ uid, onDone }: { uid: string; onDone: () => void }) {
   }
 
   async function save() {
-    if (!name.trim()) return;
+    if (!firstName.trim()) return;
     setSaving(true);
     try {
       await addDoc(collection(db, "users", uid, "contacts"), {
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
         socialMedia: socialMedia.trim(),
@@ -276,7 +296,9 @@ function AddContactForm({ uid, onDone }: { uid: string; onDone: () => void }) {
     <Card className="mb-6">
       <Eyebrow>New contact</Eyebrow>
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (required)"
+        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name (required)"
+          className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay" />
+        <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name"
           className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay" />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email"
           className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay" />
@@ -307,7 +329,7 @@ function AddContactForm({ uid, onDone }: { uid: string; onDone: () => void }) {
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)"
         className="mt-3 h-20 w-full resize-none rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay" />
       <div className="mt-3 flex gap-2">
-        <Button onClick={save} className={!name.trim() || saving ? "opacity-50" : ""}>
+        <Button onClick={save} className={!firstName.trim() || saving ? "opacity-50" : ""}>
           {saving ? "Saving..." : "Save contact"}
         </Button>
         <Button variant="ghost" onClick={onDone}>Cancel</Button>
@@ -324,7 +346,7 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const FIELDS = ["name", "email", "phone", "socialMedia", "address", "phase", "tags", "notes"];
+  const FIELDS = ["firstName", "lastName", "email", "phone", "socialMedia", "address", "phase", "tags", "notes"];
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -346,7 +368,9 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
       const auto: Record<string, string> = {};
       hdrs.forEach((h) => {
         const lower = h.toLowerCase().replace(/[^a-z]/g, "");
-        if (lower.includes("name") && !lower.includes("business")) auto[h] = "name";
+        if (lower.includes("firstname")) auto[h] = "firstName";
+        else if (lower.includes("lastname")) auto[h] = "lastName";
+        else if (lower.includes("name") && !lower.includes("business")) auto[h] = "firstName";
         else if (lower.includes("email")) auto[h] = "email";
         else if (lower.includes("phone")) auto[h] = "phone";
         else if (lower.includes("social") || lower.includes("instagram") || lower.includes("handle")) auto[h] = "socialMedia";
@@ -384,8 +408,8 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
         const obj: Record<string, string> = {};
         hdrs.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
 
-        const name = obj[reverseMap.name ?? ""]?.trim();
-        if (!name) continue;
+        const firstName = obj[reverseMap.firstName ?? ""]?.trim();
+        if (!firstName) continue;
 
         const phaseVal = obj[reverseMap.phase ?? ""]?.trim() ?? "";
         const matchedPhase = PHASES.find((p) => p.toLowerCase() === phaseVal.toLowerCase()) ?? "Prospect";
@@ -394,7 +418,8 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
 
         const ref = doc(collection(db, "users", uid, "contacts"));
         batch.set(ref, {
-          name,
+          firstName,
+          lastName: obj[reverseMap.lastName ?? ""]?.trim() ?? "",
           email: obj[reverseMap.email ?? ""]?.trim() ?? "",
           phone: obj[reverseMap.phone ?? ""]?.trim() ?? "",
           socialMedia: obj[reverseMap.socialMedia ?? ""]?.trim() ?? "",
@@ -552,7 +577,7 @@ function ContactDetail({
           <Card>
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="font-display text-2xl font-bold text-brown">{contact.name}</h2>
+                <h2 className="font-display text-2xl font-bold text-brown">{getFullName(contact)}</h2>
                 <div className="mt-2 flex items-center gap-2">
                   {editingPhase ? (
                     <div className="flex gap-1">
