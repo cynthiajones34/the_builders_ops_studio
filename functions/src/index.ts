@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
-export { gmailAuthUrl, gmailOauthCallback, syncGmail, syncMeetings } from "./gmail";
+export { gmailAuthUrl, gmailOauthCallback, syncGmail, syncMeetings, fetchIntakeResponses } from "./gmail";
 
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
@@ -450,13 +450,17 @@ export const dailyBriefing = onRequest(
       }
 
       const inbox = emails
-        .map((e) => `- [${e.category}${e.priority ? ", PRIORITY" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+        .map((e) => `- [${e.category}${e.priority ? ", PRIORITY" : ""}] ${e.from}: ${e.subject}${e.date ? ` (${e.date})` : ""}${e.why ? ` — ${e.why}` : ""}`)
         .join("\n");
+
+      const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      });
 
       const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
       const system = `${BRAND_VOICE}
 
-Write Cynthia's morning briefing from her current inbox. Be concrete and reference real senders and subjects. Don't invent meetings, revenue, or deadlines that aren't in the data.
+Write Cynthia's briefing for today, ${today}. Her recent inbox is below with dates. Focus priorities and actions on what is relevant TODAY, not on emails from previous days unless they have unresolved follow-ups. Be concrete and reference real senders and subjects. Don't invent meetings, revenue, or deadlines that aren't in the data.
 
 Return ONLY JSON with this exact shape, each value an array of 1 to 4 short strings (no em dashes, never start a line with "I"):
 {"priorities":[],"actions":[],"followups":[],"opportunities":[],"risks":[]}
@@ -470,7 +474,7 @@ Return ONLY JSON with this exact shape, each value an array of 1 to 4 short stri
         model: "claude-opus-4-8",
         max_tokens: 1500,
         system,
-        messages: [{ role: "user", content: `Today's inbox:\n${inbox}` }],
+        messages: [{ role: "user", content: `Today is ${today}. Here is the recent inbox:\n${inbox}` }],
       });
       const text = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -549,6 +553,176 @@ export const askAdvisor = onRequest(
       if (status >= 500) console.error("askAdvisor failed", err?.status, err?.message);
       res.status(status).json({
         error: status >= 500 ? "The advisor couldn't respond. Try again." : err.message,
+      });
+    }
+  }
+);
+
+type IntakeData = {
+  clientName: string;
+  businessName: string;
+  businessType?: string;
+  inBusinessSince?: string;
+  website?: string;
+  socialMedia?: string;
+  email?: string;
+  whatDoesBusinessDo?: string;
+  whoIsCustomer?: string;
+  howCustomersFind?: string;
+  howTakeOrders?: string;
+  howGetPaid?: string;
+  whatsWorking?: string;
+  whatsNotWorking?: string;
+  goodWeek?: string;
+  badWeek?: string;
+  whatWouldChange?: string;
+  monthlyRevenue?: string;
+  revenueStreams?: string;
+  biggestOpportunity?: string;
+  currentBottleneck?: string;
+  hiredAnyone?: string;
+  budget?: string;
+  scopeChecklist?: string;
+  anythingElse?: string;
+};
+
+export const meetingPrep = onRequest(
+  { secrets: [ANTHROPIC_API_KEY], region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      await requireUser(req);
+
+      const intake = req.body as IntakeData;
+      if (!intake.clientName || !intake.businessName) {
+        throw new HttpError(400, "Client name and business name are required.");
+      }
+
+      const intakeSummary = Object.entries(intake)
+        .filter(([, v]) => v && typeof v === "string" && v.trim())
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n");
+
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+      const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      });
+
+      const system = `${BRAND_VOICE}
+
+You are preparing Cynthia for a discovery call with a potential client. Today is ${today}.
+
+You have two jobs:
+1. Research the client and their business using web search. Look for their website, LinkedIn, social media, press, and any public info about their business. If they provided a website or social handles, start there.
+2. Based on the intake form answers AND your research, generate:
+   a) A meeting briefing with everything Cynthia needs to know going in.
+   b) Tailored scoping questions she should ask during the call.
+
+Return ONLY JSON with this exact shape (no em dashes, never start a line with "I"):
+{
+  "clientSummary": "2 to 3 sentence overview of who this person is and what their business does, based on the intake AND your research",
+  "researchFindings": ["key finding from web research, with source noted", "..."],
+  "strengths": ["what's already working for this client based on their answers", "..."],
+  "painPoints": ["specific operational gaps or challenges they described", "..."],
+  "scopingQuestions": ["tailored question based on their specific situation", "..."],
+  "recommendedServices": ["BOS service that maps to their needs, with brief rationale", "..."],
+  "redFlags": ["anything to watch for or clarify during the call", "..."],
+  "talkingPoints": ["key point Cynthia should make during the call", "..."]
+}
+
+Keep each array to 3 to 6 items. Be specific to THIS client, not generic.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 4096,
+        system,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: `Here is the client intake form:\n\n${intakeSummary}` }],
+      });
+
+      const textBlocks = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+
+      let parsed: Record<string, unknown> = {};
+      try {
+        const jsonStr = textBlocks.slice(textBlocks.indexOf("{"), textBlocks.lastIndexOf("}") + 1);
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        parsed = { clientSummary: textBlocks };
+      }
+
+      const clean = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+
+      res.json({
+        clientSummary: typeof parsed.clientSummary === "string" ? parsed.clientSummary : "",
+        researchFindings: clean(parsed.researchFindings),
+        strengths: clean(parsed.strengths),
+        painPoints: clean(parsed.painPoints),
+        scopingQuestions: clean(parsed.scopingQuestions),
+        recommendedServices: clean(parsed.recommendedServices),
+        redFlags: clean(parsed.redFlags),
+        talkingPoints: clean(parsed.talkingPoints),
+      });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("meetingPrep failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "Couldn't generate the meeting prep. Try again." : err.message,
+      });
+    }
+  }
+);
+
+export const migrateContactNames = onRequest(
+  { region: "us-central1", cors: CORS_ORIGINS, timeoutSeconds: 60 },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+
+      const contactsSnap = await db.collection(`users/${uid}/contacts`).get();
+      const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+
+      let updated = 0;
+      const batch = db.batch();
+
+      for (const contact of contacts) {
+        const firstName = contact.firstName || "";
+        const lastName = contact.lastName || "";
+
+        if (firstName && !lastName) {
+          const parts = firstName.trim().split(/\s+/);
+          if (parts.length > 1) {
+            const newFirstName = parts[0];
+            const newLastName = parts.slice(1).join(" ");
+
+            batch.update(db.doc(`users/${uid}/contacts/${contact.id}`), {
+              firstName: newFirstName,
+              lastName: newLastName,
+            });
+            updated++;
+          }
+        }
+      }
+
+      if (updated > 0) {
+        await batch.commit();
+      }
+
+      res.json({
+        success: true,
+        message: `Migrated ${updated} contact${updated !== 1 ? "s" : ""} with split names.`,
+        updated,
+        total: contacts.length,
+      });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("migrateContactNames failed", err?.status, err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "Migration failed. Try again." : err.message,
       });
     }
   }
