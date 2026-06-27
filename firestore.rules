@@ -36,6 +36,11 @@ service cloud.firestore {
       allow read, create, update, delete: if authorized() && request.auth.uid == uid;
     }
 
+    // CRM contacts, added by the user (individual or bulk CSV import).
+    match /users/{uid}/contacts/{doc} {
+      allow read, create, update, delete: if authorized() && request.auth.uid == uid;
+    }
+
     // Lightweight UI state (e.g. checked-off priorities), owned by the user.
     match /users/{uid}/state/{doc} {
       allow read, write: if authorized() && request.auth.uid == uid;

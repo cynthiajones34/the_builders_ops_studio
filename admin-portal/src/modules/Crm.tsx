@@ -408,9 +408,11 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
         count++;
       }
       await batch.commit();
-      setResult(`Imported ${count} contacts.`);
+      setResult(`✓ Successfully imported ${count} contact${count !== 1 ? 's' : ''}`);
+      if (fileRef.current) fileRef.current.value = "";
+      setTimeout(() => onDone(), 2000);
     } catch (e: any) {
-      setResult(`Error: ${e.message}`);
+      setResult(`✗ Error: ${e.message}`);
     } finally {
       setImporting(false);
     }
@@ -469,8 +471,14 @@ function CsvUpload({ uid, onDone }: { uid: string; onDone: () => void }) {
               {importing ? "Importing..." : "Import all rows"}
             </Button>
             <Button variant="ghost" onClick={onDone}>Cancel</Button>
-            {result && <span className="text-xs font-semibold text-positive">{result}</span>}
           </div>
+          {result && (
+            <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+              result.startsWith('✓') ? 'bg-positive/20 text-positive' : 'bg-warning/20 text-warning'
+            }`}>
+              {result}
+            </div>
+          )}
         </div>
       )}
     </Card>
