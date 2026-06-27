@@ -41,9 +41,9 @@ service cloud.firestore {
       allow read, create, update, delete: if authorized() && request.auth.uid == uid;
     }
 
-    // SDR prospects from the BOS SDR agent pipeline.
+    // SDR prospects from the BOS SDR agent pipeline. User can approve/reject via status updates.
     match /users/{uid}/prospects/{doc} {
-      allow read: if authorized() && request.auth.uid == uid;
+      allow read, update: if authorized() && request.auth.uid == uid;
     }
 
     // Lightweight UI state (e.g. checked-off priorities), owned by the user.
