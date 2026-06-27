@@ -44,7 +44,7 @@ export default function Pipeline() {
 
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "users", user.uid, "prospects"), (snap) => {
+    return onSnapshot(collection(db, "prospects"), (snap) => {
       const all = snap.docs.map((d) => ({
         prospect_id: d.id,
         ...(d.data() as Omit<Prospect, "prospect_id">),
@@ -55,24 +55,28 @@ export default function Pipeline() {
   }, [user]);
 
   async function approveProspect(prospectId: string) {
-    if (!user) return;
     setApproving(prospectId);
     try {
-      await updateDoc(doc(db, "users", user.uid, "prospects", prospectId), {
+      await updateDoc(doc(db, "prospects", prospectId), {
         status: "queued",
       });
+    } catch (err) {
+      console.error("[Pipeline] Approve failed:", err);
+      alert(`Failed to approve: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setApproving(null);
     }
   }
 
   async function rejectProspect(prospectId: string) {
-    if (!user) return;
     setApproving(prospectId);
     try {
-      await updateDoc(doc(db, "users", user.uid, "prospects", prospectId), {
+      await updateDoc(doc(db, "prospects", prospectId), {
         status: "rejected",
       });
+    } catch (err) {
+      console.error("[Pipeline] Reject failed:", err);
+      alert(`Failed to reject: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setApproving(null);
     }

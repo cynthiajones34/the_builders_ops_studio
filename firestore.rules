@@ -42,8 +42,8 @@ service cloud.firestore {
     }
 
     // SDR prospects from the BOS SDR agent pipeline. User can approve/reject via status updates.
-    match /users/{uid}/prospects/{doc} {
-      allow read, update: if authorized() && request.auth.uid == uid;
+    match /prospects/{doc} {
+      allow read, update: if authorized();
     }
 
     // Lightweight UI state (e.g. checked-off priorities), owned by the user.
