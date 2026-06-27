@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Bot, Check, X, ExternalLink } from "lucide-react";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
 import { db } from "../lib/firebase";
+import { useAuth } from "../lib/AuthContext";
 
 type OutreachLog = {
   log_id: string;
@@ -10,6 +11,7 @@ type OutreachLog = {
   message_draft: string;
   outcome: string;
   was_edited: boolean;
+  rejection_reason?: string;
 };
 
 type ProspectWithOutreach = {
@@ -27,11 +29,20 @@ type ProspectWithOutreach = {
   outreach?: OutreachLog;
 };
 
+type ActionModal = {
+  type: "approve" | "decline" | null;
+  prospectId: string;
+  prospectName: string;
+};
+
 export default function Pipeline() {
+  const { user } = useAuth();
   const [prospects, setProspects] = useState<ProspectWithOutreach[]>([]);
   const [outreachLogs, setOutreachLogs] = useState<OutreachLog[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [approving, setApproving] = useState<string | null>(null);
+  const [actionModal, setActionModal] = useState<ActionModal>({ type: null, prospectId: "", prospectName: "" });
+  const [notes, setNotes] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     return onSnapshot(collection(db, "prospects"), (snap) => {
@@ -62,31 +73,62 @@ export default function Pipeline() {
     .filter((p) => p.outreach && p.outreach.outcome === "no_reply")
     .sort((a, b) => (b.outreach?.log_id || "").localeCompare(a.outreach?.log_id || ""));
 
-  async function approveMessage(logId: string) {
-    setApproving(logId);
+  async function handleApprove() {
+    if (!user || !actionModal.prospectId) return;
+    setIsProcessing(true);
     try {
-      await updateDoc(doc(db, "outreach_log", logId), {
+      const prospect = prospects.find((p) => p.prospect_id === actionModal.prospectId);
+      if (!prospect?.outreach?.log_id) return;
+
+      await updateDoc(doc(db, "outreach_log", prospect.outreach.log_id), {
         outcome: "approved",
       });
+
+      if (notes.trim()) {
+        await addDoc(collection(db, "users", user.uid, "contacts"), {
+          firstName: prospect.owner_name.split(" ")[0],
+          lastName: prospect.owner_name.split(" ").slice(1).join(" "),
+          email: "",
+          phone: "",
+          socialMedia: prospect.linkedin_url || prospect.instagram_handle || "",
+          address: prospect.location || "",
+          phase: "Prospect",
+          tags: [],
+          notes: notes.trim(),
+          links: [],
+          addedAt: Date.now(),
+        });
+      }
+
+      setActionModal({ type: null, prospectId: "", prospectName: "" });
+      setNotes("");
     } catch (err) {
       console.error("[Outreach] Approve failed:", err);
       alert(`Failed to approve: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
-      setApproving(null);
+      setIsProcessing(false);
     }
   }
 
-  async function rejectMessage(logId: string) {
-    setApproving(logId);
+  async function handleDecline() {
+    if (!actionModal.prospectId) return;
+    setIsProcessing(true);
     try {
-      await updateDoc(doc(db, "outreach_log", logId), {
+      const prospect = prospects.find((p) => p.prospect_id === actionModal.prospectId);
+      if (!prospect?.outreach?.log_id) return;
+
+      await updateDoc(doc(db, "outreach_log", prospect.outreach.log_id), {
         outcome: "declined",
+        rejection_reason: notes.trim(),
       });
+
+      setActionModal({ type: null, prospectId: "", prospectName: "" });
+      setNotes("");
     } catch (err) {
-      console.error("[Outreach] Reject failed:", err);
-      alert(`Failed to reject: ${err instanceof Error ? err.message : "Unknown error"}`);
+      console.error("[Outreach] Decline failed:", err);
+      alert(`Failed to decline: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
-      setApproving(null);
+      setIsProcessing(false);
     }
   }
 
@@ -181,15 +223,26 @@ export default function Pipeline() {
 
                 <div className="flex gap-3 pt-4">
                   <Button
-                    onClick={() => approveMessage(prospect.outreach?.log_id || "")}
-                    className={`flex-1 ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
+                    onClick={() =>
+                      setActionModal({
+                        type: "approve",
+                        prospectId: prospect.prospect_id,
+                        prospectName: prospect.business_name,
+                      })
+                    }
                   >
                     <Check size={16} /> Approve & Send
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() => rejectMessage(prospect.outreach?.log_id || "")}
-                    className={`flex-1 text-warning hover:text-copper ${approving === prospect.outreach?.log_id ? "opacity-50" : ""}`}
+                    onClick={() =>
+                      setActionModal({
+                        type: "decline",
+                        prospectId: prospect.prospect_id,
+                        prospectName: prospect.business_name,
+                      })
+                    }
+                    className="text-warning hover:text-copper"
                   >
                     <X size={16} /> Decline
                   </Button>
@@ -197,6 +250,57 @@ export default function Pipeline() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {actionModal.type && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="max-w-md">
+            <Eyebrow>
+              {actionModal.type === "approve"
+                ? "Approve & Add to Contacts"
+                : "Decline with Reason"}
+            </Eyebrow>
+            <p className="mt-2 text-sm text-brown-mid">{actionModal.prospectName}</p>
+
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={
+                actionModal.type === "approve"
+                  ? "Add notes for your contacts file (optional)"
+                  : "Why are you declining? (helps improve future prospects)"
+              }
+              className="mt-4 h-24 w-full resize-none rounded-lg border border-sand bg-light px-3 py-2 text-sm text-brown outline-none focus:border-clay"
+            />
+
+            <div className="mt-4 flex gap-2">
+              <Button
+                onClick={actionModal.type === "approve" ? handleApprove : handleDecline}
+                className={isProcessing ? "opacity-50" : ""}
+              >
+                {actionModal.type === "approve" ? (
+                  <>
+                    <Check size={14} /> Approve
+                  </>
+                ) : (
+                  <>
+                    <X size={14} /> Decline
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setActionModal({ type: null, prospectId: "", prospectName: "" });
+                  setNotes("");
+                }}
+                className={isProcessing ? "opacity-50" : ""}
+              >
+                Cancel
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>
