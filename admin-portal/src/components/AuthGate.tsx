@@ -27,9 +27,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen items-center justify-center bg-brown px-6">
       <div className="w-full max-w-sm rounded-2xl bg-cream p-8 text-center shadow-2xl">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-brown font-display text-2xl font-bold text-clay">
-          B
-        </div>
+        <img
+          src="/favicon.png"
+          alt="BOS"
+          className="mx-auto mb-5 h-14 w-14 rounded-xl object-cover"
+        />
         <h1 className="font-display text-2xl font-bold text-brown">
           Command Center
         </h1>

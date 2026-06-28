@@ -24,9 +24,11 @@ export default function Shell() {
       {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r border-sand bg-brown text-cream">
         <div className="flex items-center gap-3 px-5 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay font-display text-lg font-bold text-brown">
-            B
-          </div>
+          <img
+            src="/favicon.png"
+            alt="BOS"
+            className="h-9 w-9 rounded-lg object-cover"
+          />
           <div className="leading-tight">
             <p className="font-display text-base font-bold">Command Center</p>
             <p className="text-[11px] uppercase tracking-wider text-clay">
