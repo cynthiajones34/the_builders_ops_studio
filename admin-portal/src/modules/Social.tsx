@@ -39,10 +39,9 @@ export default function Social() {
     setLoading(true);
     setError(null);
     try {
-      const [igRes, liRes, ttRes] = await Promise.all([
+      const [igRes, liRes] = await Promise.all([
         callApi<any>("instagramInsights").catch(() => ({ connected: false })),
         callApi<any>("linkedinInsights").catch(() => ({ connected: false })),
-        callApi<any>("tiktokInsights").catch(() => ({ connected: false })),
       ]);
 
       const allAccounts: Account[] = [];
@@ -55,10 +54,6 @@ export default function Social() {
       if (liRes.connected && liRes.account) {
         allAccounts.push(liRes.account);
         if (liRes.topPosts) allPosts.push(...liRes.topPosts);
-      }
-      if (ttRes.connected && ttRes.account) {
-        allAccounts.push(ttRes.account);
-        if (ttRes.topPosts) allPosts.push(...ttRes.topPosts);
       }
 
       setAccounts(allAccounts);
@@ -86,7 +81,7 @@ export default function Social() {
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Social Command"
-        sub="Instagram, TikTok, LinkedIn in one view. The numbers, and what they mean."
+        sub="Instagram and LinkedIn in one view. The numbers, and what they mean."
         right={
           <div className="flex gap-2">
             {!accounts.some((a) => a.platform === "Instagram") && (
@@ -97,11 +92,6 @@ export default function Social() {
             {!accounts.some((a) => a.platform === "LinkedIn") && (
               <Button variant="secondary" onClick={() => connectAccount("LinkedIn")} className="text-xs">
                 <LinkIcon size={14} /> Connect LinkedIn
-              </Button>
-            )}
-            {!accounts.some((a) => a.platform === "TikTok") && (
-              <Button variant="secondary" onClick={() => connectAccount("TikTok")} className="text-xs">
-                <LinkIcon size={14} /> Connect TikTok
               </Button>
             )}
           </div>
