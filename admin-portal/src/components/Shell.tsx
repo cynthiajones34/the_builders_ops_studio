@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Sparkles, Search, Bell, Plus, LogOut } from "lucide-react";
+import { Sparkles, Search, Bell, Plus, LogOut, X } from "lucide-react";
 import { sections, groups } from "../nav";
 import AssistantPanel from "./AssistantPanel";
 import { useAuth } from "../lib/AuthContext";
 
 export default function Shell() {
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const loc = useLocation();
   const active = sections.find((s) => loc.pathname.startsWith(s.path));
   const { user, logout } = useAuth();
@@ -108,13 +112,24 @@ export default function Shell() {
             />
             <input
               placeholder="Search everything…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchOpen(true)}
               className="w-full rounded-lg border border-sand bg-light py-2 pl-9 pr-3 text-sm text-brown outline-none placeholder:text-brown-mid/50 focus:border-clay"
             />
           </div>
-          <button className="rounded-lg border border-sand bg-light p-2 text-brown-mid hover:text-brown">
+          <button
+            onClick={() => setAddMenuOpen(!addMenuOpen)}
+            className="relative rounded-lg border border-sand bg-light p-2 text-brown-mid hover:text-brown"
+            title="Add new"
+          >
             <Plus size={17} />
           </button>
-          <button className="relative rounded-lg border border-sand bg-light p-2 text-brown-mid hover:text-brown">
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="relative rounded-lg border border-sand bg-light p-2 text-brown-mid hover:text-brown"
+            title="Notifications"
+          >
             <Bell size={17} />
             <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-copper" />
           </button>
@@ -125,6 +140,101 @@ export default function Shell() {
             <Sparkles size={16} /> Ask BOS AI
           </button>
         </header>
+
+        {/* Search Results Modal */}
+        {searchOpen && (
+          <div className="fixed inset-0 z-40" onClick={() => setSearchOpen(false)}>
+            <div
+              className="absolute top-16 right-7 w-96 rounded-xl border border-sand bg-white shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-sand p-4">
+                <p className="text-sm font-semibold text-brown">Search</p>
+              </div>
+              {searchQuery.trim() ? (
+                <div className="max-h-96 overflow-y-auto p-4">
+                  <p className="text-sm text-brown-mid">
+                    Search for "{searchQuery}" across all modules…
+                  </p>
+                  <p className="mt-3 text-xs italic text-brown-mid/60">
+                    Detailed search coming soon. For now, use the search within each module.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <p className="text-sm text-brown-mid">
+                    Type to search across contacts, projects, opportunities, and more.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Add Menu */}
+        {addMenuOpen && (
+          <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)}>
+            <div
+              className="absolute top-16 right-28 w-56 rounded-xl border border-sand bg-white shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-sand p-4">
+                <p className="text-sm font-semibold text-brown">Create New</p>
+              </div>
+              <nav className="divide-y divide-sand">
+                <NavLink
+                  to="/crm"
+                  onClick={() => setAddMenuOpen(false)}
+                  className="block px-4 py-2.5 text-sm text-brown hover:bg-light"
+                >
+                  Add Contact
+                </NavLink>
+                <NavLink
+                  to="/opportunities"
+                  onClick={() => setAddMenuOpen(false)}
+                  className="block px-4 py-2.5 text-sm text-brown hover:bg-light"
+                >
+                  Add Opportunity
+                </NavLink>
+                <NavLink
+                  to="/content"
+                  onClick={() => setAddMenuOpen(false)}
+                  className="block px-4 py-2.5 text-sm text-brown hover:bg-light"
+                >
+                  Generate Content Idea
+                </NavLink>
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Panel */}
+        {notificationsOpen && (
+          <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)}>
+            <div
+              className="absolute top-16 right-16 w-80 rounded-xl border border-sand bg-white shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-sand p-4">
+                <p className="text-sm font-semibold text-brown">Notifications</p>
+                <button
+                  onClick={() => setNotificationsOpen(false)}
+                  className="text-brown-mid hover:text-brown"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="max-h-96 overflow-y-auto p-4">
+                <p className="text-sm text-brown-mid">
+                  You're all caught up. No new notifications.
+                </p>
+                <p className="mt-3 text-xs italic text-brown-mid/60">
+                  Real-time notifications coming soon.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto px-7 py-7">
           <Outlet />
