@@ -2,7 +2,6 @@ import { onRequest } from "firebase-functions/https";
 import { onSchedule } from "firebase-functions/scheduler";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
-import * as functions from "firebase-functions";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
@@ -837,12 +836,16 @@ export const instagramAuthUrl = onRequest(
   { region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
+      console.log("instagramAuthUrl called");
       const { uid } = await requireUser(req);
-      const config = functions.config();
-      const clientId = config.social?.instagram_app_id || "";
+      console.log("User authenticated:", uid);
+
+      const clientId = process.env.SOCIAL_INSTAGRAM_APP_ID || "";
+      console.log("Instagram App ID:", clientId ? "found" : "NOT FOUND");
 
       if (!clientId) {
-        res.status(400).json({ error: "Instagram not configured. Contact admin." });
+        console.error("Instagram app ID not configured");
+        res.status(400).json({ error: "Instagram app ID not configured" });
         return;
       }
 
@@ -851,11 +854,13 @@ export const instagramAuthUrl = onRequest(
 
       const url = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_insights&response_type=code&state=${state}`;
 
+      console.log("Returning OAuth URL");
       res.json({ url });
     } catch (err: any) {
+      console.error("instagramAuthUrl error:", err.message, err.stack);
       const status = err instanceof HttpError ? err.status : 500;
       res.status(status).json({
-        error: "Couldn't generate Instagram auth URL.",
+        error: err.message || "Internal error",
       });
     }
   }
@@ -876,9 +881,8 @@ export const instagramOauthCallback = onRequest(
         return;
       }
 
-      const config = functions.config();
-      const clientId = config.social?.instagram_app_id || "";
-      const clientSecret = config.social?.instagram_app_secret || "";
+      const clientId = process.env.SOCIAL_INSTAGRAM_APP_ID || "";
+      const clientSecret = process.env.SOCIAL_INSTAGRAM_APP_SECRET || "";
       const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/instagramOauthCallback";
 
       if (!clientId || !clientSecret) {
@@ -1001,10 +1005,10 @@ export const linkedinAuthUrl = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const config = functions.config();
-      const clientId = config.social?.linkedin_client_id || "";
+      const clientId = process.env.SOCIAL_LINKEDIN_CLIENT_ID || "";
 
       if (!clientId) {
+        console.error("LinkedIn client ID not configured in Firebase config");
         res.status(400).json({ error: "LinkedIn not configured. Contact admin." });
         return;
       }
@@ -1016,7 +1020,8 @@ export const linkedinAuthUrl = onRequest(
 
       res.json({ url });
     } catch (err: any) {
-      res.status(500).json({ error: "Couldn't generate LinkedIn auth URL." });
+      console.error("linkedinAuthUrl failed:", err);
+      res.status(500).json({ error: err.message || "Couldn't generate LinkedIn auth URL." });
     }
   }
 );
@@ -1036,9 +1041,8 @@ export const linkedinOauthCallback = onRequest(
         return;
       }
 
-      const config = functions.config();
-      const clientId = config.social?.linkedin_client_id || "";
-      const clientSecret = config.social?.linkedin_client_secret || "";
+      const clientId = process.env.SOCIAL_LINKEDIN_CLIENT_ID || "";
+      const clientSecret = process.env.SOCIAL_LINKEDIN_CLIENT_SECRET || "";
       const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/linkedinOauthCallback";
 
       if (!clientId || !clientSecret) {
@@ -1133,8 +1137,7 @@ export const tiktokAuthUrl = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const config = functions.config();
-      const clientKey = config.social?.tiktok_client_key || "";
+      const clientKey = process.env.SOCIAL_TIKTOK_CLIENT_KEY || "";
       const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/tiktokOauthCallback`;
       const state = uid;
 
@@ -1162,9 +1165,8 @@ export const tiktokOauthCallback = onRequest(
         return;
       }
 
-      const config = functions.config();
-      const clientKey = config.social?.tiktok_client_key || "";
-      const clientSecret = config.social?.tiktok_client_secret || "";
+      const clientKey = process.env.SOCIAL_TIKTOK_CLIENT_KEY || "";
+      const clientSecret = process.env.SOCIAL_TIKTOK_CLIENT_SECRET || "";
 
       const tokenRes = await fetch("https://open.tiktokapis.com/v1/oauth/token/", {
         method: "POST",
