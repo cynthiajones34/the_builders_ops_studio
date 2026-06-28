@@ -61,6 +61,11 @@ service cloud.firestore {
       allow read: if authorized() && request.auth.uid == uid;
     }
 
+    // Social media integrations (Instagram, LinkedIn, TikTok, etc.)
+    match /users/{uid}/integrations/{platform} {
+      allow read, write: if authorized() && request.auth.uid == uid;
+    }
+
     // Refresh tokens (users/{uid}/private/**), oauthStates/**, and anything
     // else default to deny for clients: no rule grants access.
   }
