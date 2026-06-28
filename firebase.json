@@ -25,6 +25,13 @@
       { "source": "/api/syncMeetings", "function": { "functionId": "syncMeetings", "region": "us-central1" } },
       { "source": "/api/meetingPrep", "function": { "functionId": "meetingPrep", "region": "us-central1" } },
       { "source": "/api/fetchIntakeResponses", "function": { "functionId": "fetchIntakeResponses", "region": "us-central1" } },
+      { "source": "/api/instagramAuthUrl", "function": { "functionId": "instagramAuthUrl", "region": "us-central1" } },
+      { "source": "/api/instagramOauthCallback", "function": { "functionId": "instagramOauthCallback", "region": "us-central1" } },
+      { "source": "/api/instagramInsights", "function": { "functionId": "instagramInsights", "region": "us-central1" } },
+      { "source": "/api/disconnectInstagram", "function": { "functionId": "disconnectInstagram", "region": "us-central1" } },
+      { "source": "/api/linkedinAuthUrl", "function": { "functionId": "linkedinAuthUrl", "region": "us-central1" } },
+      { "source": "/api/linkedinOauthCallback", "function": { "functionId": "linkedinOauthCallback", "region": "us-central1" } },
+      { "source": "/api/linkedinInsights", "function": { "functionId": "linkedinInsights", "region": "us-central1" } },
       { "source": "/admin/**", "destination": "/admin/index.html" }
     ]
   },
