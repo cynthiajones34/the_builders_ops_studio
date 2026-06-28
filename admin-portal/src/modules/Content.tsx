@@ -1,44 +1,48 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Repeat, Calendar, ArrowRight, AlertCircle, Copy } from "lucide-react";
+import { Sparkles, Repeat, Calendar, ArrowRight, AlertCircle, Copy, Plus, X, Pencil } from "lucide-react";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
 import { calendar } from "../data/mock";
 import { callApi } from "../lib/api";
 
-type Idea = { pillar: string; format: string; hook: string; source: string };
+type Idea = { id: string; pillar: string; format: string; hook: string; source: string };
 type Repurpose = { to: string; content: string };
+type CalendarDay = { day: string; date: string; items: { id: string; t: string }[] };
+
+const PILLARS = ["Operations", "Pricing", "Culture", "Growth"];
+const FORMATS = ["LinkedIn Post", "Email", "Twitter", "Blog"];
 
 export default function Content() {
   const [tab, setTab] = useState<"ideas" | "draft" | "calendar">("ideas");
 
-  const [ideas, setIdeas] = useState<Idea[] | null>(null);
-  const [ideasGrounded, setIdeasGrounded] = useState(true);
-  const [ideasState, setIdeasState] = useState<"loading" | "ready" | "error">("loading");
-  const [ideasError, setIdeasError] = useState<string | null>(null);
-  const [focus, setFocus] = useState("");
-
+  const [ideas, setIdeas] = useState<Idea[]>([]);
   const [selected, setSelected] = useState<Idea | null>(null);
   const [draft, setDraft] = useState("");
   const [repurpose, setRepurpose] = useState<Repurpose[]>([]);
   const [draftState, setDraftState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
-  async function loadIdeas() {
-    setIdeasState("loading");
-    setIdeasError(null);
-    try {
-      const r = await callApi<{ ideas: Idea[]; grounded: boolean }>("generateContent", { focus });
-      setIdeas(r.ideas ?? []);
-      setIdeasGrounded(r.grounded);
-      setIdeasState("ready");
-    } catch (e: any) {
-      setIdeasError(e?.message ?? "Couldn't generate ideas.");
-      setIdeasState("error");
-    }
+  const [calendarData, setCalendarData] = useState<CalendarDay[]>(
+    calendar.map((d) => ({ ...d, items: (d.items || []).map((i) => ({ id: Math.random().toString(), t: i.t })) }))
+  );
+  const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [newItemText, setNewItemText] = useState("");
+
+  const [newIdea, setNewIdea] = useState<Idea>({ id: "", pillar: "Operations", format: "LinkedIn Post", hook: "", source: "" });
+  const [showNewForm, setShowNewForm] = useState(false);
+
+  function addIdea() {
+    if (!newIdea.hook.trim()) return;
+    const idea = { ...newIdea, id: Date.now().toString() };
+    setIdeas([...ideas, idea]);
+    setNewIdea({ id: "", pillar: "Operations", format: "LinkedIn Post", hook: "", source: "" });
+    setShowNewForm(false);
   }
 
-  useEffect(() => {
-    loadIdeas();
-  }, []);
+  function removeIdea(id: string) {
+    setIdeas(ideas.filter((i) => i.id !== id));
+    if (selected?.id === id) setSelected(null);
+  }
 
   async function draftIt(idea: Idea) {
     setSelected(idea);
@@ -60,14 +64,54 @@ export default function Content() {
     }
   }
 
+  async function regenerateIdea(idea: Idea) {
+    setRegeneratingId(idea.id);
+    setDraftError(null);
+    try {
+      const r = await callApi<{ draft: string; repurpose: Repurpose[] }>("draftContent", {
+        hook: idea.hook,
+        pillar: idea.pillar,
+        format: idea.format,
+      });
+      setDraft(r.draft ?? "");
+      setRepurpose(r.repurpose ?? []);
+      setDraftState("ready");
+    } catch (e: any) {
+      setDraftError(e?.message ?? "Couldn't regenerate.");
+    } finally {
+      setRegeneratingId(null);
+    }
+  }
+
+  function addCalendarItem(day: string) {
+    if (!newItemText.trim()) return;
+    setCalendarData(
+      calendarData.map((d) =>
+        d.day === day
+          ? { ...d, items: [...d.items, { id: Date.now().toString(), t: newItemText.trim() }] }
+          : d
+      )
+    );
+    setNewItemText("");
+    setEditingDay(null);
+  }
+
+  function removeCalendarItem(day: string, itemId: string) {
+    setCalendarData(
+      calendarData.map((d) =>
+        d.day === day ? { ...d, items: d.items.filter((i) => i.id !== itemId) } : d
+      )
+    );
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Content Studio"
-        sub="Your personal content strategist. Ideas pulled from your real meetings and emails."
+        sub="Plan your content, draft your posts, and manage your calendar."
         right={
-          <Button onClick={() => ideasState !== "loading" && loadIdeas()}>
-            <Sparkles size={15} /> {ideasState === "loading" ? "Generating…" : "Generate from this week"}
+          <Button onClick={() => setShowNewForm(!showNewForm)}>
+            <Plus size={15} /> {showNewForm ? "Cancel" : "Add idea"}
           </Button>
         }
       />
@@ -88,52 +132,98 @@ export default function Content() {
 
       {tab === "ideas" && (
         <>
-          <div className="mb-5 flex gap-2">
-            <input
-              value={focus}
-              onChange={(e) => setFocus(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && ideasState !== "loading" && loadIdeas()}
-              placeholder="Optional: what do you want to talk about this week? (e.g. onboarding, pricing, burnout)"
-              className="flex-1 rounded-xl border border-sand bg-cream px-4 py-2.5 text-sm text-brown outline-none placeholder:text-brown-mid/50 focus:border-clay"
-            />
-            <Button variant="secondary" onClick={() => ideasState !== "loading" && loadIdeas()}>
-              <Sparkles size={15} /> Generate
-            </Button>
-          </div>
+          {showNewForm && (
+            <Card className="mb-6">
+              <Eyebrow>Add Content Idea</Eyebrow>
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <select
+                    value={newIdea.pillar}
+                    onChange={(e) => setNewIdea({ ...newIdea, pillar: e.target.value })}
+                    className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
+                  >
+                    {PILLARS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={newIdea.format}
+                    onChange={(e) => setNewIdea({ ...newIdea, format: e.target.value })}
+                    className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
+                  >
+                    {FORMATS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <input
+                  value={newIdea.hook}
+                  onChange={(e) => setNewIdea({ ...newIdea, hook: e.target.value })}
+                  placeholder="Content idea (the hook or main point)"
+                  className="w-full rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
+                />
+                <input
+                  value={newIdea.source}
+                  onChange={(e) => setNewIdea({ ...newIdea, source: e.target.value })}
+                  placeholder="Source (optional - e.g. client call, email)"
+                  className="w-full rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={addIdea} className={!newIdea.hook.trim() ? "opacity-50" : ""}>
+                    <Plus size={14} /> Add Idea
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowNewForm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
 
-          {ideasState === "loading" && (
+          {ideas.length === 0 && !showNewForm && (
             <Card className="py-12 text-center text-sm text-brown-mid">
-              Reading your meetings and inbox for what's worth posting…
+              No content ideas yet. Click "Add idea" to suggest content topics.
             </Card>
           )}
-          {ideasState === "error" && (
-            <Card className="flex items-start gap-2 border-copper bg-clay-light">
-              <AlertCircle size={16} className="mt-0.5 text-copper" />
-              <p className="text-sm text-brown">{ideasError}</p>
-            </Card>
-          )}
-          {ideasState === "ready" && !ideasGrounded && (
-            <Card className="py-12 text-center text-sm text-brown-mid">
-              Connect Gmail and sync your meetings first, then your content ideas come from your
-              real conversations.
-            </Card>
-          )}
-          {ideasState === "ready" && ideasGrounded && ideas && (
+
+          {ideas.length > 0 && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {ideas.map((idea, i) => (
-                <Card key={i} className="flex flex-col">
+              {ideas.map((idea) => (
+                <Card key={idea.id} className="flex flex-col">
                   <div className="flex items-center justify-between">
-                    <Badge tone="clay">{idea.pillar}</Badge>
-                    <span className="text-[11px] text-brown-mid">{idea.format}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge tone="clay">{idea.pillar}</Badge>
+                      <span className="text-[11px] text-brown-mid">{idea.format}</span>
+                    </div>
+                    <button onClick={() => removeIdea(idea.id)} className="text-brown-mid hover:text-copper">
+                      <X size={14} />
+                    </button>
                   </div>
                   <p className="mt-3 font-display text-lg font-semibold leading-snug text-brown">
                     "{idea.hook}"
                   </p>
                   {idea.source && <p className="mt-2 text-xs italic text-clay">From {idea.source}</p>}
                   <div className="mt-auto flex gap-2 pt-4">
-                    <Button variant="secondary" className="!py-1.5 text-xs" onClick={() => draftIt(idea)}>
+                    <Button
+                      variant="secondary"
+                      className="flex-1 !py-1.5 text-xs"
+                      onClick={() => draftIt(idea)}
+                    >
                       Draft it <ArrowRight size={13} />
                     </Button>
+                    {selected?.id === idea.id && draftState === "ready" && (
+                      <Button
+                        variant="secondary"
+                        className="!py-1.5 text-xs"
+                        onClick={() => regenerateIdea(idea)}
+                      >
+                        <Sparkles size={12} /> {regeneratingId === idea.id ? "..." : "Regen"}
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -226,26 +316,63 @@ export default function Content() {
           <div className="mb-4 flex items-center gap-2">
             <Calendar size={16} className="text-clay" />
             <Eyebrow>This Week</Eyebrow>
-            <span className="rounded-full bg-sand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brown-mid">
-              Sample
-            </span>
           </div>
           <div className="grid grid-cols-5 gap-3">
-            {calendar.map((d) => (
+            {calendarData.map((d) => (
               <div key={d.day} className="rounded-xl border border-sand bg-light p-3">
                 <div className="mb-2 flex items-baseline justify-between">
                   <p className="text-xs font-bold uppercase tracking-wider text-brown-mid">{d.day}</p>
                   <p className="text-[11px] font-semibold text-clay">{d.date}</p>
                 </div>
                 <div className="space-y-2">
-                  {d.items.length === 0 && (
-                    <p className="text-[11px] italic text-brown-mid/50">Open slot</p>
+                  {d.items.length === 0 && editingDay !== d.day && (
+                    <button
+                      onClick={() => setEditingDay(d.day)}
+                      className="text-[11px] italic text-brown-mid/50 hover:text-clay"
+                    >
+                      + Add item
+                    </button>
                   )}
-                  {d.items.map((it, i) => (
-                    <div key={i} className="rounded-lg bg-cream px-2 py-1.5 text-[11px] font-medium text-brown">
-                      {it.t}
+                  {d.items.map((it) => (
+                    <div key={it.id} className="group flex items-center justify-between rounded-lg bg-cream px-2 py-1.5">
+                      <p className="text-[11px] font-medium text-brown">{it.t}</p>
+                      <button
+                        onClick={() => removeCalendarItem(d.day, it.id)}
+                        className="text-brown-mid/0 transition group-hover:text-brown-mid"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
+                  {editingDay === d.day && (
+                    <div className="space-y-1">
+                      <input
+                        value={newItemText}
+                        onChange={(e) => setNewItemText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addCalendarItem(d.day)}
+                        placeholder="Post idea…"
+                        className="w-full rounded-lg border border-clay bg-white px-2 py-1 text-[11px] text-brown outline-none"
+                        autoFocus
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => addCalendarItem(d.day)}
+                          className="flex-1 rounded-lg bg-clay px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-copper"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingDay(null);
+                            setNewItemText("");
+                          }}
+                          className="flex-1 rounded-lg bg-sand px-2 py-0.5 text-[10px] font-semibold text-brown hover:bg-sand/80"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
