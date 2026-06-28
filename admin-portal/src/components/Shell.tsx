@@ -11,6 +11,7 @@ export default function Shell() {
   const [searchQuery, setSearchQuery] = useState("");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [hasNotifications] = useState(false);
   const loc = useLocation();
   const active = sections.find((s) => loc.pathname.startsWith(s.path));
   const { user, logout } = useAuth();
@@ -131,7 +132,9 @@ export default function Shell() {
             title="Notifications"
           >
             <Bell size={17} />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-copper" />
+            {hasNotifications && (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-copper" />
+            )}
           </button>
           <button
             onClick={() => setAssistantOpen(true)}
