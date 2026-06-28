@@ -2,6 +2,7 @@ import { onRequest } from "firebase-functions/https";
 import { onSchedule } from "firebase-functions/scheduler";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
+import * as functions from "firebase-functions";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
@@ -837,8 +838,15 @@ export const instagramAuthUrl = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const clientId = process.env.INSTAGRAM_APP_ID || "";
-      const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/instagramOauthCallback`;
+      const config = functions.config();
+      const clientId = config.social?.instagram_app_id || "";
+
+      if (!clientId) {
+        res.status(400).json({ error: "Instagram not configured. Contact admin." });
+        return;
+      }
+
+      const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/instagramOauthCallback";
       const state = uid;
 
       const url = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_insights&response_type=code&state=${state}`;
@@ -868,9 +876,15 @@ export const instagramOauthCallback = onRequest(
         return;
       }
 
-      const clientId = process.env.INSTAGRAM_APP_ID || "";
-      const clientSecret = process.env.INSTAGRAM_APP_SECRET || "";
-      const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/instagramOauthCallback`;
+      const config = functions.config();
+      const clientId = config.social?.instagram_app_id || "";
+      const clientSecret = config.social?.instagram_app_secret || "";
+      const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/instagramOauthCallback";
+
+      if (!clientId || !clientSecret) {
+        res.status(400).json({ error: "Instagram not configured" });
+        return;
+      }
 
       const tokenRes = await fetch("https://graph.instagram.com/v18.0/oauth/access_token", {
         method: "POST",
@@ -987,8 +1001,15 @@ export const linkedinAuthUrl = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const clientId = process.env.LINKEDIN_CLIENT_ID || "";
-      const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/linkedinOauthCallback`;
+      const config = functions.config();
+      const clientId = config.social?.linkedin_client_id || "";
+
+      if (!clientId) {
+        res.status(400).json({ error: "LinkedIn not configured. Contact admin." });
+        return;
+      }
+
+      const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/linkedinOauthCallback";
       const state = uid;
 
       const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress%20w_member_social`;
@@ -1015,9 +1036,15 @@ export const linkedinOauthCallback = onRequest(
         return;
       }
 
-      const clientId = process.env.LINKEDIN_CLIENT_ID || "";
-      const clientSecret = process.env.LINKEDIN_CLIENT_SECRET || "";
-      const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/linkedinOauthCallback`;
+      const config = functions.config();
+      const clientId = config.social?.linkedin_client_id || "";
+      const clientSecret = config.social?.linkedin_client_secret || "";
+      const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/linkedinOauthCallback";
+
+      if (!clientId || !clientSecret) {
+        res.status(400).json({ error: "LinkedIn not configured" });
+        return;
+      }
 
       const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
         method: "POST",
@@ -1106,7 +1133,8 @@ export const tiktokAuthUrl = onRequest(
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
-      const clientKey = process.env.TIKTOK_CLIENT_KEY || "";
+      const config = functions.config();
+      const clientKey = config.social?.tiktok_client_key || "";
       const redirectUri = `${process.env.FUNCTIONS_URL || "https://us-central1-the-builders-ops-studio.cloudfunctions.net"}/tiktokOauthCallback`;
       const state = uid;
 
@@ -1134,8 +1162,9 @@ export const tiktokOauthCallback = onRequest(
         return;
       }
 
-      const clientKey = process.env.TIKTOK_CLIENT_KEY || "";
-      const clientSecret = process.env.TIKTOK_CLIENT_SECRET || "";
+      const config = functions.config();
+      const clientKey = config.social?.tiktok_client_key || "";
+      const clientSecret = config.social?.tiktok_client_secret || "";
 
       const tokenRes = await fetch("https://open.tiktokapis.com/v1/oauth/token/", {
         method: "POST",
