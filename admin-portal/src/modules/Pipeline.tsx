@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, Check, X, ExternalLink } from "lucide-react";
+import { Bot, Check, X, ExternalLink, Pencil } from "lucide-react";
 import { collection, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
 import { db } from "../lib/firebase";
@@ -43,6 +43,8 @@ export default function Pipeline() {
   const [actionModal, setActionModal] = useState<ActionModal>({ type: null, prospectId: "", prospectName: "" });
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editedMessage, setEditedMessage] = useState("");
 
   useEffect(() => {
     return onSnapshot(collection(db, "prospects"), (snap) => {
@@ -132,6 +134,21 @@ export default function Pipeline() {
     }
   }
 
+  async function saveEditedMessage(logId: string) {
+    if (!editedMessage.trim()) return;
+    try {
+      await updateDoc(doc(db, "outreach_log", logId), {
+        message_draft: editedMessage.trim(),
+        was_edited: true,
+      });
+      setEditingLogId(null);
+      setEditedMessage("");
+    } catch (err) {
+      console.error("[Outreach] Save edit failed:", err);
+      alert(`Failed to save: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
+  }
+
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -216,8 +233,49 @@ export default function Pipeline() {
 
               {prospect.outreach?.message_draft && (
                 <div className="mb-4 rounded-lg border border-sand bg-cream p-4">
-                  <Eyebrow>Drafted Message</Eyebrow>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-brown">{prospect.outreach.message_draft}</p>
+                  <div className="mb-2 flex items-center justify-between">
+                    <Eyebrow>Drafted Message</Eyebrow>
+                    {editingLogId !== prospect.outreach.log_id && (
+                      <button
+                        onClick={() => {
+                          setEditingLogId(prospect.outreach?.log_id || null);
+                          setEditedMessage(prospect.outreach?.message_draft || "");
+                        }}
+                        className="flex items-center gap-1 text-xs font-semibold text-clay hover:underline"
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                    )}
+                  </div>
+                  {editingLogId === prospect.outreach.log_id ? (
+                    <div>
+                      <textarea
+                        value={editedMessage}
+                        onChange={(e) => setEditedMessage(e.target.value)}
+                        className="h-32 w-full resize-y rounded-lg border border-clay bg-white px-3 py-2 text-sm leading-relaxed text-brown outline-none"
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <Button
+                          onClick={() => saveEditedMessage(prospect.outreach?.log_id || "")}
+                          className="!text-xs !py-1"
+                        >
+                          <Check size={12} /> Save
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingLogId(null);
+                            setEditedMessage("");
+                          }}
+                          className="!text-xs !py-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-brown">{prospect.outreach.message_draft}</p>
+                  )}
                 </div>
               )}
 
