@@ -1,48 +1,52 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Repeat, Calendar, ArrowRight, AlertCircle, Copy, Plus, X, Pencil } from "lucide-react";
+import { Sparkles, Repeat, Calendar, ArrowRight, AlertCircle, Copy, CheckCircle2, SkipForward } from "lucide-react";
 import { Card, Eyebrow, SectionTitle, Badge, Button } from "../components/ui";
 import { calendar } from "../data/mock";
 import { callApi } from "../lib/api";
 
-type Idea = { id: string; pillar: string; format: string; hook: string; source: string };
+type Idea = { pillar: string; format: string; hook: string; source: string };
 type Repurpose = { to: string; content: string };
-type CalendarDay = { day: string; date: string; items: { id: string; t: string }[] };
-
-const PILLARS = ["Operations", "Pricing", "Culture", "Growth"];
-const FORMATS = ["LinkedIn Post", "Email", "Twitter", "Blog"];
 
 export default function Content() {
   const [tab, setTab] = useState<"ideas" | "draft" | "calendar">("ideas");
 
-  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [ideasGrounded, setIdeasGrounded] = useState(true);
+  const [ideasState, setIdeasState] = useState<"loading" | "ready" | "error">("loading");
+  const [ideasError, setIdeasError] = useState<string | null>(null);
+  const [focus, setFocus] = useState("");
+  const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0);
+
   const [selected, setSelected] = useState<Idea | null>(null);
   const [draft, setDraft] = useState("");
   const [repurpose, setRepurpose] = useState<Repurpose[]>([]);
   const [draftState, setDraftState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
-  const [calendarData, setCalendarData] = useState<CalendarDay[]>(
+  const [calendarData, setCalendarData] = useState(
     calendar.map((d) => ({ ...d, items: (d.items || []).map((i) => ({ id: Math.random().toString(), t: i.t })) }))
   );
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [newItemText, setNewItemText] = useState("");
 
-  const [newIdea, setNewIdea] = useState<Idea>({ id: "", pillar: "Operations", format: "LinkedIn Post", hook: "", source: "" });
-  const [showNewForm, setShowNewForm] = useState(false);
-
-  function addIdea() {
-    if (!newIdea.hook.trim()) return;
-    const idea = { ...newIdea, id: Date.now().toString() };
-    setIdeas([...ideas, idea]);
-    setNewIdea({ id: "", pillar: "Operations", format: "LinkedIn Post", hook: "", source: "" });
-    setShowNewForm(false);
+  async function loadIdeas() {
+    setIdeasState("loading");
+    setIdeasError(null);
+    setCurrentIdeaIndex(0);
+    try {
+      const r = await callApi<{ ideas: Idea[]; grounded: boolean }>("generateContent", { focus });
+      setIdeas(r.ideas ?? []);
+      setIdeasGrounded(r.grounded);
+      setIdeasState("ready");
+    } catch (e: any) {
+      setIdeasError(e?.message ?? "Couldn't generate ideas.");
+      setIdeasState("error");
+    }
   }
 
-  function removeIdea(id: string) {
-    setIdeas(ideas.filter((i) => i.id !== id));
-    if (selected?.id === id) setSelected(null);
-  }
+  useEffect(() => {
+    loadIdeas();
+  }, []);
 
   async function draftIt(idea: Idea) {
     setSelected(idea);
@@ -64,22 +68,16 @@ export default function Content() {
     }
   }
 
-  async function regenerateIdea(idea: Idea) {
-    setRegeneratingId(idea.id);
-    setDraftError(null);
+  async function regenerateCurrentIdea() {
+    if (!ideas || currentIdeaIndex >= ideas.length) return;
+    const idea = ideas[currentIdeaIndex];
     try {
-      const r = await callApi<{ draft: string; repurpose: Repurpose[] }>("draftContent", {
-        hook: idea.hook,
-        pillar: idea.pillar,
-        format: idea.format,
-      });
-      setDraft(r.draft ?? "");
-      setRepurpose(r.repurpose ?? []);
-      setDraftState("ready");
+      const r = await callApi<{ ideas: Idea[] }>("generateContent", { focus });
+      if (r.ideas && r.ideas.length > 0) {
+        setIdeas(ideas.map((_, i) => (i === currentIdeaIndex ? r.ideas[0] : _)));
+      }
     } catch (e: any) {
-      setDraftError(e?.message ?? "Couldn't regenerate.");
-    } finally {
-      setRegeneratingId(null);
+      setIdeasError(e?.message ?? "Couldn't generate new idea.");
     }
   }
 
@@ -108,10 +106,10 @@ export default function Content() {
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Content Studio"
-        sub="Plan your content, draft your posts, and manage your calendar."
+        sub="AI-generated ideas, manually drafted content, and your weekly calendar."
         right={
-          <Button onClick={() => setShowNewForm(!showNewForm)}>
-            <Plus size={15} /> {showNewForm ? "Cancel" : "Add idea"}
+          <Button onClick={() => ideasState !== "loading" && loadIdeas()}>
+            <Sparkles size={15} /> {ideasState === "loading" ? "Generating…" : "Generate ideas"}
           </Button>
         }
       />
@@ -125,109 +123,69 @@ export default function Content() {
               tab === t ? "bg-brown text-cream" : "text-brown-mid hover:bg-clay-light"
             }`}
           >
-            {t === "ideas" ? "Content Suggestions" : t === "draft" ? "Draft + Repurpose" : "Content Calendar"}
+            {t === "ideas" ? "Content Ideas" : t === "draft" ? "Draft + Repurpose" : "Calendar"}
           </button>
         ))}
       </div>
 
       {tab === "ideas" && (
         <>
-          {showNewForm && (
-            <Card className="mb-6">
-              <Eyebrow>Add Content Idea</Eyebrow>
-              <div className="mt-4 space-y-3">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <select
-                    value={newIdea.pillar}
-                    onChange={(e) => setNewIdea({ ...newIdea, pillar: e.target.value })}
-                    className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
-                  >
-                    {PILLARS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={newIdea.format}
-                    onChange={(e) => setNewIdea({ ...newIdea, format: e.target.value })}
-                    className="rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
-                  >
-                    {FORMATS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
+          <div className="mb-5 flex gap-2">
+            <input
+              value={focus}
+              onChange={(e) => setFocus(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ideasState !== "loading" && loadIdeas()}
+              placeholder="What's on your mind? (e.g. onboarding, pricing)"
+              className="flex-1 rounded-xl border border-sand bg-cream px-4 py-2.5 text-sm text-brown outline-none placeholder:text-brown-mid/50 focus:border-clay"
+            />
+            <Button variant="secondary" onClick={() => ideasState !== "loading" && loadIdeas()}>
+              <Sparkles size={15} /> Generate
+            </Button>
+          </div>
+
+          {ideasState === "loading" && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Generating content ideas…
+            </Card>
+          )}
+          {ideasState === "error" && (
+            <Card className="flex items-start gap-2 border-copper bg-clay-light">
+              <AlertCircle size={16} className="mt-0.5 text-copper" />
+              <p className="text-sm text-brown">{ideasError}</p>
+            </Card>
+          )}
+          {ideasState === "ready" && !ideasGrounded && (
+            <Card className="py-12 text-center text-sm text-brown-mid">
+              Connect Gmail and sync meetings first for ideas from your real conversations.
+            </Card>
+          )}
+          {ideasState === "ready" && ideasGrounded && ideas && ideas.length > 0 && currentIdeaIndex < ideas.length && (
+            <Card className="max-w-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge tone="clay">{ideas[currentIdeaIndex].pillar}</Badge>
+                  <span className="text-[11px] text-brown-mid">{ideas[currentIdeaIndex].format}</span>
                 </div>
-                <input
-                  value={newIdea.hook}
-                  onChange={(e) => setNewIdea({ ...newIdea, hook: e.target.value })}
-                  placeholder="Content idea (the hook or main point)"
-                  className="w-full rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
-                />
-                <input
-                  value={newIdea.source}
-                  onChange={(e) => setNewIdea({ ...newIdea, source: e.target.value })}
-                  placeholder="Source (optional - e.g. client call, email)"
-                  className="w-full rounded-xl border border-sand bg-light px-3 py-2.5 text-sm text-brown outline-none focus:border-clay"
-                />
-                <div className="flex gap-2">
-                  <Button onClick={addIdea} className={!newIdea.hook.trim() ? "opacity-50" : ""}>
-                    <Plus size={14} /> Add Idea
-                  </Button>
-                  <Button variant="ghost" onClick={() => setShowNewForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
+                <span className="text-xs text-brown-mid">{currentIdeaIndex + 1} of {ideas.length}</span>
+              </div>
+              <p className="mt-4 font-display text-xl font-semibold leading-snug text-brown">
+                "{ideas[currentIdeaIndex].hook}"
+              </p>
+              {ideas[currentIdeaIndex].source && (
+                <p className="mt-2 text-xs italic text-clay">From {ideas[currentIdeaIndex].source}</p>
+              )}
+              <div className="mt-6 flex gap-2">
+                <Button onClick={() => draftIt(ideas[currentIdeaIndex])}>
+                  <CheckCircle2 size={16} /> Save & Draft
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => regenerateCurrentIdea()}
+                >
+                  <SkipForward size={16} /> Skip
+                </Button>
               </div>
             </Card>
-          )}
-
-          {ideas.length === 0 && !showNewForm && (
-            <Card className="py-12 text-center text-sm text-brown-mid">
-              No content ideas yet. Click "Add idea" to suggest content topics.
-            </Card>
-          )}
-
-          {ideas.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {ideas.map((idea) => (
-                <Card key={idea.id} className="flex flex-col">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge tone="clay">{idea.pillar}</Badge>
-                      <span className="text-[11px] text-brown-mid">{idea.format}</span>
-                    </div>
-                    <button onClick={() => removeIdea(idea.id)} className="text-brown-mid hover:text-copper">
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <p className="mt-3 font-display text-lg font-semibold leading-snug text-brown">
-                    "{idea.hook}"
-                  </p>
-                  {idea.source && <p className="mt-2 text-xs italic text-clay">From {idea.source}</p>}
-                  <div className="mt-auto flex gap-2 pt-4">
-                    <Button
-                      variant="secondary"
-                      className="flex-1 !py-1.5 text-xs"
-                      onClick={() => draftIt(idea)}
-                    >
-                      Draft it <ArrowRight size={13} />
-                    </Button>
-                    {selected?.id === idea.id && draftState === "ready" && (
-                      <Button
-                        variant="secondary"
-                        className="!py-1.5 text-xs"
-                        onClick={() => regenerateIdea(idea)}
-                      >
-                        <Sparkles size={12} /> {regeneratingId === idea.id ? "..." : "Regen"}
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
           )}
         </>
       )}
@@ -340,7 +298,7 @@ export default function Content() {
                         onClick={() => removeCalendarItem(d.day, it.id)}
                         className="text-brown-mid/0 transition group-hover:text-brown-mid"
                       >
-                        <X size={12} />
+                        <SkipForward size={12} />
                       </button>
                     </div>
                   ))}
