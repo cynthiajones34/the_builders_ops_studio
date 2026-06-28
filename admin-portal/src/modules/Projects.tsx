@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { Card, SectionTitle, Badge, Button } from "../components/ui";
 import { callApi } from "../lib/api";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { useAuth } from "../lib/AuthContext";
 
 type Project = {
   name: string;
@@ -18,20 +21,39 @@ const statusTone: Record<string, any> = {
   waiting: "warning",
 };
 
+const now = new Date();
+const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+
 export default function Projects() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [grounded, setGrounded] = useState(true);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
+    if (!user) return;
     setState("loading");
     setError(null);
     try {
+      const cacheRef = doc(db, "users", user.uid, "state", "projects");
+      const snap = await getDoc(cacheRef);
+
+      if (snap.exists()) {
+        const d = snap.data() as any;
+        if (d.date === todayKey && Array.isArray(d.projects)) {
+          setProjects(d.projects ?? []);
+          setGrounded(d.grounded ?? true);
+          setState("ready");
+          return;
+        }
+      }
+
       const r = await callApi<{ projects: Project[]; grounded: boolean }>("generateProjects");
       setProjects(r.projects ?? []);
       setGrounded(r.grounded);
       setState("ready");
+      await setDoc(cacheRef, { date: todayKey, projects: r.projects ?? [], grounded: r.grounded });
     } catch (e: any) {
       setError(e?.message ?? "Couldn't build projects.");
       setState("error");
@@ -41,7 +63,7 @@ export default function Projects() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   return (
     <div className="mx-auto max-w-7xl">

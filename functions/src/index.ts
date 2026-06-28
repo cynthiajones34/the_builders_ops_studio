@@ -1,4 +1,5 @@
 import { onRequest } from "firebase-functions/https";
+import { onSchedule } from "firebase-functions/scheduler";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
@@ -724,6 +725,106 @@ export const migrateContactNames = onRequest(
       res.status(status).json({
         error: status >= 500 ? "Migration failed. Try again." : err.message,
       });
+    }
+  }
+);
+
+/**
+ * Daily report cache sync. Runs at 9am EDT every day to generate and cache
+ * the daily, weekly, and monthly intelligence reports. This way the UI loads
+ * instantly from cache instead of generating on first load.
+ */
+export const syncIntelligentReports = onSchedule(
+  { schedule: "0 9 * * *", timeZone: "America/New_York", region: "us-central1" },
+  async (context) => {
+    try {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+      // Get all users
+      const usersSnap = await db.collection("users").get();
+
+      for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+
+        // Get user's emails and meetings
+        const [emailSnap, meetingSnap] = await Promise.all([
+          db.collection(`users/${uid}/emails`).get(),
+          db.collection(`users/${uid}/meetings`).get(),
+        ]);
+
+        const emails = emailSnap.docs.map((d) => d.data() as any);
+        const meetings = meetingSnap.docs.map((d) => d.data() as any);
+
+        if (emails.length === 0 && meetings.length === 0) continue;
+
+        const emailCtx = emails
+          .map((e) => `- [${e.category}${e.priority ? ", priority" : ""}] ${e.from}: ${e.subject}${e.why ? ` (${e.why})` : ""}`)
+          .join("\n");
+        const meetingCtx = meetings
+          .map((m) => `- ${m.title}: ${m.summary ?? ""}${(m.opportunities ?? []).length ? ` | opportunities: ${(m.opportunities ?? []).join("; ")}` : ""}${(m.actions ?? []).length ? ` | actions: ${(m.actions ?? []).join("; ")}` : ""}`)
+          .join("\n");
+
+        // Generate reports for all three periods
+        const periods: ("daily" | "weekly" | "monthly")[] = ["daily", "weekly", "monthly"];
+        const shape: Record<typeof periods[number], string> = {
+          daily: "blocks for: Priorities, Opportunities, Follow-ups",
+          weekly: "blocks for: Wins, Pipeline & Opportunities, Themes, Follow-ups",
+          monthly: "blocks for: Trends, Themes, Strategy",
+        };
+
+        for (const period of periods) {
+          try {
+            const system = `${BRAND_VOICE}
+
+Write Cynthia's ${period} intelligence report, grounded only in the inbox and meetings below. Be specific, reference real names and topics, don't invent numbers or revenue that aren't in the data.
+
+Produce ${shape[period]}.
+Return ONLY JSON: {"blocks":[{"label":"<block name>","items":["<short line>", ...]}]}. 3 to 4 items per block, no em dashes, never start a line with "I".`;
+
+            const response = await anthropic.messages.create({
+              model: "claude-opus-4-8",
+              max_tokens: 2000,
+              system,
+              messages: [
+                { role: "user", content: `Inbox:\n${emailCtx || "(none)"}\n\nMeetings:\n${meetingCtx || "(none)"}` },
+              ],
+            });
+
+            const text = response.content
+              .filter((b): b is Anthropic.TextBlock => b.type === "text")
+              .map((b) => b.text)
+              .join("")
+              .trim();
+
+            let blocks: { label: string; items: string[] }[] = [];
+            try {
+              const p = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+              blocks = (Array.isArray(p.blocks) ? p.blocks : [])
+                .filter((b: any) => b && typeof b.label === "string" && Array.isArray(b.items))
+                .map((b: any) => ({ label: b.label, items: b.items.filter((x: any) => typeof x === "string") }));
+            } catch {
+              blocks = [];
+            }
+
+            // Cache the report
+            const today = new Date();
+            const cacheKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+            await db.doc(`users/${uid}/state/reports_${period}`).set({
+              date: cacheKey,
+              blocks,
+              grounded: true,
+              lastSync: new Date().toISOString(),
+            });
+          } catch (err) {
+            console.error(`Failed to generate ${period} report for user ${uid}:`, err);
+          }
+        }
+      }
+
+      console.log("Intelligent reports sync completed successfully");
+    } catch (err) {
+      console.error("syncIntelligentReports failed:", err);
+      throw err;
     }
   }
 );

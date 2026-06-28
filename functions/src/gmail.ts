@@ -440,3 +440,60 @@ Return ONLY JSON with this exact shape:
     return { title: name, summary: "", actions: [], decisions: [], opportunities: [] };
   }
 }
+
+const INTAKE_SHEET_ID = "1GA8prJq8_OdtRWYTnX8b3LxYWQll4-C7Tfj1_lLc_MQ";
+
+export const fetchIntakeResponses = onRequest(
+  {
+    secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET],
+    region: REGION,
+    cors: CORS_ORIGINS,
+  },
+  async (req, res) => {
+    try {
+      const { uid } = await requireUser(req);
+
+      const tokenSnap = await db.doc(`users/${uid}/private/gmail`).get();
+      const refreshToken = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
+      if (!refreshToken) throw new HttpError(412, "Connect Gmail first to access the intake sheet.");
+
+      const client = oauthClient();
+      client.setCredentials({ refresh_token: refreshToken });
+      const sheets = google.sheets({ version: "v4", auth: client });
+
+      const result = await sheets.spreadsheets.values.get({
+        spreadsheetId: INTAKE_SHEET_ID,
+        range: "Form Responses 1",
+      });
+
+      const rows = result.data.values ?? [];
+      if (rows.length < 2) {
+        res.json({ responses: [] });
+        return;
+      }
+
+      const headers = rows[0];
+      const responses = rows.slice(1).map((row, idx) => {
+        const obj: Record<string, string> = {};
+        headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
+        return {
+          id: idx,
+          clientName: obj["Client Name"] ?? "",
+          businessName: obj["Business Name"] ?? "",
+          businessType: obj["Business Type"] ?? "",
+          email: obj["Email"] ?? "",
+          timestamp: obj["Timestamp"] ?? "",
+          raw: obj,
+        };
+      });
+
+      res.json({ responses });
+    } catch (err: any) {
+      const status = err instanceof HttpError ? err.status : 500;
+      if (status >= 500) console.error("fetchIntakeResponses failed", err?.message);
+      res.status(status).json({
+        error: status >= 500 ? "Couldn't load intake responses." : err.message,
+      });
+    }
+  }
+);

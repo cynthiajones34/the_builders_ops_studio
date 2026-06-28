@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beyond Prompting — The Builders' Ops Studio</title>
+<link rel="icon" href="../favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream:    #F5F0E8;
+    --sand:     #E8DCC8;
+    --clay:     #C4956A;
+    --clay-lt:  #F0E0CC;
+    --brown:    #3D2B1F;
+    --brown-mid:#6B4C3B;
+    --copper:   #A0522D;
+    --light:    #FAF7F2;
+    --white:    #FFFFFF;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans:  'Jost', 'Helvetica Neue', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: var(--sans);
+    background: var(--brown);
+    color: var(--brown);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Deck shell ---- */
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 7vh 9vw;
+    background: var(--cream);
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; opacity: 1; z-index: 2; }
+
+  /* Surfaces */
+  .slide.dark  { background: var(--brown); color: var(--cream); }
+  .slide.light { background: var(--light); }
+
+  /* ---- Typographic system ---- */
+  .eyebrow {
+    font-size: clamp(11px, 1.05vw, 15px);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 2.2vh;
+  }
+  .dark .eyebrow { color: var(--clay); }
+
+  h1.display {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(40px, 6.6vw, 104px);
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+  }
+  h2.headline {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(34px, 5vw, 78px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    color: var(--brown);
+  }
+  .dark h2.headline, .dark h1.display { color: var(--cream); }
+
+  .lede {
+    font-size: clamp(17px, 1.9vw, 30px);
+    line-height: 1.5;
+    font-weight: 400;
+    color: var(--brown-mid);
+    max-width: 60ch;
+  }
+  .dark .lede { color: var(--sand); }
+
+  .accent { color: var(--copper); }
+  .dark .accent { color: var(--clay); }
+  em.serif-em { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 1.08em; }
+
+  /* ---- Wordmark (recreated, scales + recolors) ---- */
+  .wordmark { display: flex; align-items: center; gap: 0.85em; }
+  .wordmark .rule {
+    width: 1px; height: 2.6em; background: currentColor; opacity: 0.85;
+    position: relative;
+  }
+  .wordmark .rule::after {
+    content: ""; position: absolute; top: 50%; left: -7px;
+    width: 16px; height: 1px; background: currentColor;
+  }
+  .wordmark .stack { line-height: 1; }
+  .wordmark .wm-the { font-size: 0.62em; letter-spacing: 0.32em; font-weight: 600; text-transform: uppercase; }
+  .wordmark .wm-builders {
+    font-family: var(--serif); font-weight: 600; font-size: 1.7em;
+    letter-spacing: 0.02em; text-transform: uppercase; margin: 0.04em 0;
+  }
+  .wordmark .wm-ops { font-size: 0.66em; letter-spacing: 0.30em; font-weight: 600; text-transform: uppercase; }
+  .wordmark .wm-tag { font-size: 0.44em; letter-spacing: 0.22em; font-weight: 600; text-transform: uppercase; color: var(--clay); margin-top: 0.55em; }
+
+  /* ---- Footer chrome on every slide ---- */
+  .chrome {
+    position: absolute; left: 9vw; right: 9vw; bottom: 3.6vh;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: clamp(10px, 0.85vw, 13px);
+    letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600;
+    color: var(--clay);
+    z-index: 3;
+  }
+  .dark .chrome { color: var(--clay); }
+  .chrome .brand-mini { opacity: 0.9; }
+
+  /* ---- Lists / beats ---- */
+  .beats { list-style: none; display: flex; flex-direction: column; gap: 2.4vh; margin-top: 1vh; max-width: 70ch; }
+  .beat { display: flex; gap: 1.1em; align-items: flex-start; }
+  .beat .num {
+    flex: none; font-family: var(--serif); font-weight: 600; font-style: italic;
+    font-size: clamp(22px, 2.6vw, 40px); color: var(--clay); line-height: 1; min-width: 1.4em;
+  }
+  .beat .body strong {
+    display: block; font-size: clamp(18px, 1.85vw, 28px); font-weight: 600; color: var(--brown); margin-bottom: 0.25em;
+  }
+  .dark .beat .body strong { color: var(--cream); }
+  .beat .body span { font-size: clamp(14px, 1.35vw, 20px); color: var(--brown-mid); line-height: 1.5; }
+  .dark .beat .body span { color: var(--sand); opacity: 0.92; }
+
+  /* ---- Pillars ---- */
+  .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6vw; margin-top: 3vh; }
+  .pillar {
+    background: var(--white); border: 1.5px solid var(--sand); border-radius: 14px;
+    padding: clamp(18px, 1.9vw, 30px);
+  }
+  .dark .pillar { background: rgba(245,240,232,0.06); border-color: rgba(196,149,106,0.4); }
+  .pillar .pk { font-family: var(--serif); font-style: italic; font-size: clamp(26px, 2.6vw, 40px); color: var(--clay); line-height: 1; }
+  .pillar .pt { font-size: clamp(15px, 1.45vw, 22px); font-weight: 600; color: var(--brown); margin: 0.7em 0 0.3em; }
+  .dark .pillar .pt { color: var(--cream); }
+  .pillar .pd { font-size: clamp(13px, 1.15vw, 17px); color: var(--brown-mid); line-height: 1.5; }
+  .dark .pillar .pd { color: var(--sand); opacity: 0.9; }
+
+  /* ---- Two column ---- */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4vw; align-items: center; }
+  .cols.tight { gap: 3vw; }
+
+  /* ---- Photo ---- */
+  .portrait-wrap { position: relative; }
+  .portrait {
+    width: 100%; max-width: 34vw; aspect-ratio: 1/1; object-fit: cover;
+    border-radius: 18px; border: 6px solid var(--cream);
+    box-shadow: 0 26px 60px rgba(42,26,16,0.45);
+  }
+  .portrait-tag {
+    position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%);
+    background: var(--clay); color: #fff; font-size: clamp(11px,1vw,15px);
+    font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.5em 1.2em; border-radius: 30px; white-space: nowrap;
+  }
+
+  /* ---- Reframe / funnel ---- */
+  .reframe-line { font-family: var(--serif); font-style: italic; font-weight: 500;
+    font-size: clamp(24px, 3.4vw, 54px); line-height: 1.18; color: var(--cream); max-width: 22ch; }
+  .reframe-line .accent { color: var(--clay); font-style: italic; }
+
+  /* ---- Big quote slide ---- */
+  .bigquote { font-family: var(--serif); font-weight: 500;
+    font-size: clamp(32px, 5vw, 80px); line-height: 1.1; letter-spacing: -0.01em; max-width: 20ch; }
+  .bigquote .accent { color: var(--clay); }
+
+  /* ---- CTA / QR ---- */
+  .cta-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 5vw; align-items: center; }
+  .qr-card {
+    background: var(--cream); border-radius: 20px; padding: clamp(20px, 2.2vw, 34px);
+    text-align: center; box-shadow: 0 26px 60px rgba(42,26,16,0.45);
+  }
+  .qr-card img { width: 100%; max-width: 320px; display: block; margin: 0 auto; border-radius: 8px; }
+  .qr-card .qr-label { margin-top: 1em; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    font-size: clamp(12px, 1.1vw, 16px); color: var(--copper); }
+  .qr-card .qr-sub { margin-top: 0.3em; font-size: clamp(12px,1vw,15px); color: var(--brown-mid); }
+
+  .contact { margin-top: 3vh; font-size: clamp(15px, 1.4vw, 22px); color: var(--sand); line-height: 1.8; }
+  .contact .accent { color: var(--clay); font-weight: 600; }
+
+  /* ---- Progress + nav ---- */
+  .progress { position: absolute; top: 0; left: 0; height: 4px; background: var(--clay); width: 0; z-index: 10; transition: width 0.45s ease; }
+  .nav { position: absolute; right: 2.4vw; bottom: 3.6vh; display: flex; gap: 10px; z-index: 20; }
+  .nav button {
+    width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--clay);
+    background: rgba(245,240,232,0.7); color: var(--brown); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    backdrop-filter: blur(4px);
+  }
+  .nav button:hover { background: var(--clay); color: #fff; }
+  .hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 1.3vh; font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--clay); opacity: 0.5; z-index: 20; white-space: nowrap; }
+
+  /* ---- Print: one slide per page for PDF export ---- */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { height: auto; background: #fff; }
+    .deck { height: auto; width: auto; overflow: visible; }
+    .slide {
+      display: flex !important; opacity: 1 !important; position: relative; inset: auto;
+      width: 1280px; height: 720px; page-break-after: always; break-after: page;
+    }
+    .progress, .nav, .hint { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+  <div class="progress" id="progress"></div>
+
+  <!-- 1 · COVER -->
+  <section class="slide dark active">
+    <div class="wordmark" style="font-size: clamp(16px,1.7vw,26px); color: var(--cream); margin-bottom: 5vh;">
+      <span class="rule"></span>
+      <span class="stack">
+        <span class="wm-the">The</span><br>
+        <span class="wm-builders">Builders'</span><br>
+        <span class="wm-ops">Ops Studio</span>
+      </span>
+    </div>
+    <div class="eyebrow">A Live Build Session</div>
+    <h1 class="display">Beyond<br>Prompting</h1>
+    <p class="lede" style="margin-top:3vh;">Building with AI for small business. Not the prompts. The <em class="serif-em accent">machine</em> that runs the back office while you sleep.</p>
+    <div class="chrome">
+      <span class="brand-mini">Cynthia Jones</span>
+      <span>thebuildersopsstudio.com</span>
+    </div>
+  </section>
+
+  <!-- 2 · THE GAP (hook) -->
+  <section class="slide">
+    <div class="eyebrow">Start Here</div>
+    <h2 class="headline">There's a gap between <span class="accent">using</span> AI<br>and AI <span class="accent">doing the work.</span></h2>
+    <p class="lede" style="margin-top:3.4vh;">Most people have used AI to write a caption, an email, a post. Far fewer have an AI tool that actually ran a part of their business for them, while they slept.</p>
+    <p class="lede" style="margin-top:1.6vh; color:var(--copper); font-weight:500;">That gap is the whole reason for tonight.</p>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>01 · The Gap</span></div>
+  </section>
+
+  <!-- 3 · WHY ME -->
+  <section class="slide light">
+    <div class="cols tight">
+      <div>
+        <div class="eyebrow">Why Me</div>
+        <h2 class="headline" style="font-size:clamp(28px,3.8vw,58px);">Fifteen years building<br>other people's operations.</h2>
+        <p class="lede" style="margin-top:2.6vh; font-size:clamp(15px,1.5vw,23px);">Multimillion-dollar budgets. Teams across five continents. Then a course teaching software engineers how AI systems actually work, the real machinery behind the tools. Now that same infrastructure, built for small businesses.</p>
+        <div class="pillars">
+          <div class="pillar"><div class="pk">01</div><div class="pt">I build it</div><div class="pd">Not slideware. Real systems that ship.</div></div>
+          <div class="pillar"><div class="pk">02</div><div class="pt">Enterprise ops</div><div class="pd">For businesses our size.</div></div>
+          <div class="pillar"><div class="pk">03</div><div class="pt">I taught the AI</div><div class="pd">No guessing on what it can do.</div></div>
+        </div>
+      </div>
+      <div class="portrait-wrap" style="display:flex;justify-content:center;">
+        <div style="position:relative;">
+          <img class="portrait" src="assets/cynthia.jpg" alt="Cynthia Jones" />
+          <span class="portrait-tag">Cynthia Jones · Founder</span>
+        </div>
+      </div>
+    </div>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>02 · Why Me</span></div>
+  </section>
+
+  <!-- 4 · THE REFRAME -->
+  <section class="slide dark">
+    <div class="eyebrow">The Reframe</div>
+    <p class="reframe-line">Most AI talk is about the <span class="accent">front</span> of your business. More followers. More leads. More customers at the door.</p>
+    <p class="reframe-line" style="margin-top:3.2vh;">My work starts the moment they walk <span class="accent">through</span> it.</p>
+    <p class="lede" style="margin-top:3.6vh; font-style:italic; font-family:var(--serif); font-size:clamp(18px,2vw,30px); color:var(--clay);">"She fills the top of the funnel. I build the machine that keeps the bottom from leaking."</p>
+    <div class="chrome"><span class="brand-mini">Cynthia Jones</span><span>03 · Front vs. Back</span></div>
+  </section>
+
+  <!-- 5 · BIG TRUTH -->
+  <section class="slide">
+    <div class="eyebrow">The Stakes</div>
+    <p class="bigquote">More customers without a system underneath isn't growth.<br><span class="accent">It's just a bigger fire.</span></p>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>04</span></div>
+  </section>
+
+  <!-- 6 · SECTION DIVIDER: SHOW -->
+  <section class="slide dark">
+    <div class="eyebrow">Show, Don't Tell</div>
+    <h1 class="display" style="font-size:clamp(40px,7vw,108px);">Two real<br>businesses.</h1>
+    <p class="lede" style="margin-top:3vh;">Not demos. Not mockups. Systems running right now for a Georgia bakery and a wellness coach.</p>
+    <div class="chrome"><span class="brand-mini">Cynthia Jones</span><span>05 · The Builds</span></div>
+  </section>
+
+  <!-- 7 · THE BAKER -->
+  <section class="slide light">
+    <div class="eyebrow">Build One · The Baker</div>
+    <h2 class="headline" style="font-size:clamp(28px,3.8vw,56px);">Twenty years of demand.<br>No system.</h2>
+    <p class="lede" style="margin-top:1.6vh; font-size:clamp(15px,1.5vw,22px);">Orders in her DMs. Capacity in her head. Turning away business she couldn't track.</p>
+    <ul class="beats">
+      <li class="beat"><span class="num">01</span><span class="body"><strong>A live order form with a capacity tracker</strong><span>She never over-commits her oven again. The system says when she's full.</span></span></li>
+      <li class="beat"><span class="num">02</span><span class="body"><strong>Standing orders that run themselves</strong><span>Her regulars get a text every Thursday, the order processes automatically. Guaranteed weekly revenue on autopilot.</span></span></li>
+      <li class="beat"><span class="num">03</span><span class="body"><strong>No monthly subscription</strong><span>She owns it. The software and the data are hers.</span></span></li>
+    </ul>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>06 · The Baker</span></div>
+  </section>
+
+  <!-- 8 · YAMS -->
+  <section class="slide light">
+    <div class="eyebrow">Build Two · The Wellness Coach</div>
+    <h2 class="headline" style="font-size:clamp(28px,3.8vw,56px);">Real brand. Real following.<br>All of it in her head.</h2>
+    <p class="lede" style="margin-top:1.6vh; font-size:clamp(15px,1.5vw,22px);">Everything ran on her phone and her memory.</p>
+    <ul class="beats">
+      <li class="beat"><span class="num">01</span><span class="body"><strong>A client portal</strong><span>Her whole coaching relationship in one place: intake, sessions, progress, contracts.</span></span></li>
+      <li class="beat"><span class="num">02</span><span class="body"><strong>One-click enroll</strong><span>An application comes in, the right emails go out automatically. Turning an applicant into a client takes one click instead of a week.</span></span></li>
+      <li class="beat"><span class="num">03</span><span class="body"><strong>She got her hours back</strong><span>From running her practice in her head to running it from a dashboard.</span></span></li>
+    </ul>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>07 · The Coach</span></div>
+  </section>
+
+  <!-- 9 · WHAT THIS MEANS -->
+  <section class="slide dark">
+    <div class="eyebrow">What This Means For You</div>
+    <h2 class="headline">Built, not rented.<br>And finally <span class="accent">affordable.</span></h2>
+    <p class="lede" style="margin-top:3vh;">These aren't apps they rented. They were built for the specific business, the owner owns them, and they're designed to run without her touching every piece.</p>
+    <p class="lede" style="margin-top:2vh;">Custom software used to cost fifty thousand dollars and a development team. AI is what makes building this for a small business affordable now. That's the real headline. You can finally own infrastructure that used to be only for big companies.</p>
+    <div class="chrome"><span class="brand-mini">Cynthia Jones</span><span>08 · Why Now</span></div>
+  </section>
+
+  <!-- 10 · ONE QUESTION -->
+  <section class="slide">
+    <div class="eyebrow">Where To Start</div>
+    <p class="bigquote">You don't need all of it at once.<br>It starts with one question:<br><span class="accent">where is your business breaking?</span></p>
+    <p class="lede" style="margin-top:3.2vh;">We find that first. Then we build the one thing that fixes it.</p>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>09 · One Question</span></div>
+  </section>
+
+  <!-- 11 · THE SERIES (trial balloon) -->
+  <section class="slide light">
+    <div class="eyebrow">An Idea I'm Testing</div>
+    <h2 class="headline" style="font-size:clamp(30px,4.2vw,64px);">A small hands-on series.</h2>
+    <p class="lede" style="margin-top:3vh;">A few of us, building one real system together over a few weeks. Not a lecture. A build.</p>
+    <p class="lede" style="margin-top:2vh; color:var(--copper); font-weight:500;">If that sounds useful, find me after and tell me. I'm listening for whether there's appetite for it.</p>
+    <div class="chrome"><span class="brand-mini">The Builders' Ops Studio</span><span>10 · The Series</span></div>
+  </section>
+
+  <!-- 12 · THE CLOSE / QR -->
+  <section class="slide dark">
+    <div class="cta-grid">
+      <div>
+        <div class="eyebrow">The Ask</div>
+        <h2 class="headline" style="font-size:clamp(30px,4.4vw,68px);">If your business is running you,<br>let's fix that.</h2>
+        <p class="lede" style="margin-top:2.6vh;">A free 45-minute discovery call. We sit down, I help you see where the gaps are. No pitch.</p>
+        <p class="contact">
+          The code books it. Grab a slot tonight.<br>
+          <span class="accent">cynthia@thebuildersopsstudio.com</span>
+        </p>
+      </div>
+      <div class="qr-card">
+        <img src="assets/qr-booking.png" alt="Scan to book a discovery call" />
+        <div class="qr-label">Scan to book your call</div>
+        <div class="qr-sub">thebuildersopsstudio.com</div>
+      </div>
+    </div>
+    <div class="chrome"><span class="brand-mini">Cynthia Jones</span><span>11 · Book A Call</span></div>
+  </section>
+
+  <!-- 13 · THANK YOU -->
+  <section class="slide dark" style="align-items:flex-start;">
+    <div class="wordmark" style="font-size: clamp(16px,1.7vw,26px); color: var(--cream); margin-bottom: 5vh;">
+      <span class="rule"></span>
+      <span class="stack">
+        <span class="wm-the">The</span><br>
+        <span class="wm-builders">Builders'</span><br>
+        <span class="wm-ops">Ops Studio</span>
+        <span class="wm-tag" style="display:block;">Strategy · Systems · Structure</span>
+      </span>
+    </div>
+    <h1 class="display" style="font-size:clamp(36px,5.6vw,88px);">I build the systems<br>your business runs on.</h1>
+    <p class="lede" style="margin-top:3vh;">Cynthia Jones · The Builders' Ops Studio. Thank you.</p>
+    <div class="chrome"><span class="brand-mini">cynthia@thebuildersopsstudio.com</span><span>thebuildersopsstudio.com</span></div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="Previous slide">&#8592;</button>
+  <button id="next" aria-label="Next slide">&#8594;</button>
+</div>
+<div class="hint">← → or Space to navigate · P to print</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const progress = document.getElementById('progress');
+  let i = 0;
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+    location.hash = i + 1;
+  }
+  function next() { show(i + 1); }
+  function prev() { show(i - 1); }
+
+  document.getElementById('next').onclick = next;
+  document.getElementById('prev').onclick = prev;
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'p') window.print();
+  });
+
+  // click right/left half to advance (skip when clicking nav/links)
+  document.getElementById('deck').addEventListener('click', (e) => {
+    if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('.qr-card')) return;
+    (e.clientX > window.innerWidth / 2) ? next() : prev();
+  });
+
+  const start = parseInt(location.hash.replace('#', ''), 10);
+  show(Number.isFinite(start) && start > 0 ? start - 1 : 0);
+</script>
+</body>
+</html>

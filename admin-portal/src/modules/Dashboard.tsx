@@ -8,8 +8,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Sparkles, Circle, CheckCircle2 } from "lucide-react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { ArrowRight, RefreshCw, Sparkles, Circle, CheckCircle2 } from "lucide-react";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { Card, Eyebrow, SectionTitle, Stat, Button } from "../components/ui";
 import { healthMetrics, revenueTrend } from "../data/mock";
 import { callApi } from "../lib/api";
@@ -25,14 +25,16 @@ type Briefing = {
   grounded?: boolean;
 };
 
-const todayLabel = new Date().toLocaleDateString([], {
+const now = new Date();
+const todayLabel = now.toLocaleDateString([], {
   weekday: "long",
   month: "long",
   day: "numeric",
 });
 // Local YYYY-MM-DD, so checked-off priorities reset with a new day.
-const now = new Date();
 const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+const hour = now.getHours();
+const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -42,18 +44,57 @@ export default function Dashboard() {
   const [doneDate, setDoneDate] = useState("");
 
   useEffect(() => {
+    if (!user) return;
     let active = true;
-    callApi<Briefing>("dailyBriefing")
-      .then((b) => {
+    const cacheRef = doc(db, "users", user.uid, "state", "dailyBriefing");
+
+    async function load() {
+      try {
+        const snap = await getDoc(cacheRef);
+        if (snap.exists()) {
+          const d = snap.data() as any;
+          if (d.date === todayKey && Array.isArray(d.priorities)) {
+            if (active) {
+              setBriefing({
+                priorities: d.priorities ?? [],
+                actions: d.actions ?? [],
+                followups: d.followups ?? [],
+                opportunities: d.opportunities ?? [],
+                risks: d.risks ?? [],
+                grounded: d.grounded,
+              });
+              setBriefingState("ready");
+            }
+            return;
+          }
+        }
+        const b = await callApi<Briefing>("dailyBriefing");
         if (!active) return;
         setBriefing(b);
         setBriefingState("ready");
-      })
-      .catch(() => active && setBriefingState("error"));
-    return () => {
-      active = false;
-    };
-  }, []);
+        setDoc(cacheRef, { date: todayKey, ...b });
+      } catch {
+        if (active) setBriefingState("error");
+      }
+    }
+
+    load();
+    return () => { active = false; };
+  }, [user]);
+
+  async function refreshBriefing() {
+    if (!user) return;
+    setBriefingState("loading");
+    const cacheRef = doc(db, "users", user.uid, "state", "dailyBriefing");
+    try {
+      const b = await callApi<Briefing>("dailyBriefing");
+      setBriefing(b);
+      setBriefingState("ready");
+      setDoc(cacheRef, { date: todayKey, ...b });
+    } catch {
+      setBriefingState("error");
+    }
+  }
 
   // Persisted checked-off priorities for today.
   useEffect(() => {
@@ -86,7 +127,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
-        title="Good morning, Cynthia."
+        title={`${greeting}, Cynthia.`}
         sub="Here's what matters today. Everything else can wait."
         right={
           <Button variant="secondary">
@@ -151,11 +192,21 @@ export default function Dashboard() {
 
         {/* AI Daily Briefing */}
         <Card className="bg-brown text-cream">
-          <div className="mb-3 flex items-center gap-2">
-            <Sparkles size={16} className="text-clay" />
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-clay">
-              AI Daily Briefing
-            </p>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-clay" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-clay">
+                AI Daily Briefing
+              </p>
+            </div>
+            <button
+              onClick={refreshBriefing}
+              disabled={briefingState === "loading"}
+              title="Refresh briefing"
+              className="text-clay/60 transition hover:text-clay disabled:opacity-30"
+            >
+              <RefreshCw size={13} />
+            </button>
           </div>
 
           {briefingState === "loading" && (

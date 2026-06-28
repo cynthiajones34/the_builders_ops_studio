@@ -19,10 +19,6 @@ images/josh-knell.jpeg,1781209606222,fb5cc946e7f91a0766e92053a5d93ec63ef3f026e1c
 guides/yams-wellness-features-guide.pdf,1781288795001,227d5f6bde0e7b228822406d4ef811ca1a373cec294572b8a512c42f37bd8126
 guides/yams-wellness-features-guide.md,1781288734429,f218541e2759b5a29dc841aa45731b6198cdc5e711fd4decfc0377acf1e48c37
 .gstack/no-test-bootstrap,1781222945719,f1b651238a58fe290baec6c5e32f3bdb1943dd2bd582f02569231f7a757c7837
-.gstack/claude-available.json,1782596631737,2eb87d52949b00516a7614751106df7cae6dd7d826df9a8390377d7bfad6a360
-.gstack/browse-network.log,1782596923864,1cc9419e7a4e4a2c44392a814e2eb8894e887ccdcf6152ff248db333f9f42473
-.gstack/browse-console.log,1782596632641,fceda1315741bbfc3933084011d2f1675706d9ad7d155cad1c7fc25e0f289e6a
-.gstack/browse-audit.jsonl,1782596926826,3e2ad09b3b6f661e71c9173c6fe98d7805815a01dfa9f51194d92315e2dccdbc
 .context/todos.md,1781209606322,f1b651238a58fe290baec6c5e32f3bdb1943dd2bd582f02569231f7a757c7837
 .context/vo/vo_words.json,1781768099681,905bbfcd0c8314b4e7f9a453fc7ab89487078dce60add644215205b936ee382b
 .context/vo/vo16k.wav,1781768070541,61bf00c5088af5d4476ab59c236e5b0f3709df050a66934939ddfd6900f76cf6
@@ -16526,10 +16522,18 @@ guides/yams-wellness-features-guide.md,1781288734429,f218541e2759b5a29dc841aa457
 .context/attachments/3CtFcu/Transcript of Minimize Tokens.md,1782302506499,1f37e5d5b118962fcbe5c718a4752f26b8ff1657840b7e52f933d76e8b1bb39a
 .context/attachments/0miOWp/pasted_text_2026-06-18_19-35-13.txt,1781825713682,72d4e13aaf25342ac5f82cfec401f2434618968ffb477069ba83131c0f8fecc2
 .context/attachments/0YUDnv/session-transcript-8964082c-d16f-4926-bac6-355231357f92.md,1782568099550,fa5d772b1e7ff02c7aa684b45ed4712cfc97ed88301d765984fdb14f1f54caa7
-.claude/settings.local.json,1782600610380,40d9352a1e64b78e8cdb706aa1883b4e57b5e4cb4e3fac91c981bc1f22734902
-admin/index.html,1782616009988,7f0ec23a16015041084384a3ed7b1255792c89f064c26f0aede7e7286162a605
-admin/assets/index-CjsAMEwi.css,1782616009988,def890ea3ee66454226e6043ac212a1186029b27f36d8bd32ed20b1b24f5ffe3
-admin/assets/index-BCvTJwtE.js,1782616009988,0fbc4aafdcca645e8d7d00527136147fade6036e703c04641fa3eb8087482968
-.context/attachments/7reozK/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
+admin/index.html,1782617260882,80123b32eadfad497026707e86d1e1e483ca986367cd062146507ad4aaf99f0c
+.gstack/terminal-port,1782616201223,6f6e87dbe96ba3473222f8403701227a1686e6b2be2ca51446074d2fd1892b28
+.gstack/terminal-internal-token,1782616201217,12a27d1acf97c07cf12e24bc001179d6f16d45e33afefd5567a25353c1aa5aa0
+.gstack/terminal-agent-pid,1782616201223,805f4c81e6a8d37bdfe10b13d482339018bc8804ecba3658f4e08a077ba336f7
+.gstack/claude-available.json,1782616201218,3720367dbc01d5ff8dfd0fd274514714fd808b3448f6bc5a4785aa92bc66383d
+.gstack/browse.json,1782616141183,3b9e917147e70112ce684533b683a8ef35e8da3ba177d5da38a14d90c14b5c39
+.gstack/browse-network.log,1782616148163,d62d22fca7f24448bc8cb1d3b82d5c24d7546bc49398082cd06de77fee42eb97
+admin/assets/index-CjsAMEwi.css,1782617260882,def890ea3ee66454226e6043ac212a1186029b27f36d8bd32ed20b1b24f5ffe3
+.claude/settings.local.json,1782617212091,8fe629e62c6068efa66904c3321ef09c88c9cc59b96b2cf008e3965de5a0e427
+.gstack/browse-audit.jsonl,1782616154695,ee830665c5f66855549b6df3d23a728b58960b091ed663f177eaad03788a40c4
+.context/attachments/wg1tlw/favicon.png,1779567896003,a01aae6726109aa66775a615d8795d11dd01c055d2f61d3955ff159bfaf41e3e
+admin/assets/index-cRGsF3iS.js,1782617260882,dde68ec54258335a52a1900bbbf192a235ea732f9c7152ce9fddfd18d593ee01
 .context/attachments/ENfG3T/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
+.context/attachments/7reozK/This is Episode 1 of Behind the Build_ the story of how we built the operational foundation for YAMS_ Your Alignment, Mindset & Soul Holistic Wellness Coaching.  We built a marketing site, a private client portal, a coach dashboard, and a f.mp4,1782141162902,c9d9b36a1035ed63ea407993adf9cd1f0345ffbdfcbbb88d24186b0837f4d3af
 .context/attachments/NVq4wF/Behind the Build, Episode 2_ Scoping. Everyone wants to jump to the tool. The real work happens before that, finding where your business actually breaks. The leads that go cold. The onboarding that lives in your emails. The work scattered a.mp4,1782306105365,bef989b45bf09abe1c44f93859376ecef77d69d3553f421912a067ed7ec3543a
