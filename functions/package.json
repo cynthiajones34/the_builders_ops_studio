@@ -1,0 +1,10 @@
+{
+  "name": "functions",
+  "description": "Lead magnet email delivery",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-functions": "^6.0.0"
+  },
+  "private": true
+}
