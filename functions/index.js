@@ -5,9 +5,8 @@ const { defineSecret } = require("firebase-functions/params");
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
-// ponytail: verify buildersopsstudio.com in Resend, then this "from" works.
-// Until then Resend only delivers to the account owner's own address.
-const FROM = "Cynthia Jones <cynthia@buildersopsstudio.com>";
+// From must be on a Resend-verified domain (thebuildersopsstudio.com is verified).
+const FROM = "Cynthia Jones <cynthia@thebuildersopsstudio.com>";
 const PDF_NAME = "BOS_Operational_Gaps_Self_Audit.pdf";
 const PDF_B64 = fs.readFileSync(path.join(__dirname, PDF_NAME)).toString("base64");
 

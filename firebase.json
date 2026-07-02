@@ -16,6 +16,7 @@
     ]
   },
   "functions": {
-    "source": "functions"
+    "source": "functions",
+    "codebase": "leadmagnet"
   }
 }
