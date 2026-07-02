@@ -29,7 +29,10 @@ function buildEmail(to, firstName) {
   };
 }
 
-exports.sendAudit = onRequest({ region: "us-central1", secrets: [RESEND_API_KEY] }, async (req, res) => {
+// cors: the live site is GitHub Pages (a different origin), so allow it explicitly.
+const ALLOWED_ORIGINS = ["https://www.thebuildersopsstudio.com", "https://thebuildersopsstudio.com"];
+
+exports.sendAudit = onRequest({ region: "us-central1", secrets: [RESEND_API_KEY], cors: ALLOWED_ORIGINS }, async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (req.body && req.body._gotcha) return res.json({ ok: true }); // honeypot: pretend success
 

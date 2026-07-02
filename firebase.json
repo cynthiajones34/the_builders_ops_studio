@@ -7,12 +7,6 @@
       "**/node_modules/**",
       "README.md",
       "functions/**"
-    ],
-    "rewrites": [
-      {
-        "source": "/api/send-audit",
-        "function": { "functionId": "sendAudit", "region": "us-central1" }
-      }
     ]
   },
   "functions": {

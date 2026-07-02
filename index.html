@@ -1107,7 +1107,7 @@ async function handleAuditSubmit(e) {
   btn.disabled = true;
   btn.textContent = 'Sending…';
   try {
-    const res = await fetch('/api/send-audit', {
+    const res = await fetch('https://us-central1-the-builders-ops-studio.cloudfunctions.net/sendAudit', {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({
