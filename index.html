@@ -199,30 +199,6 @@
   }
 
   /* INTRO BAND */
-  .intro-band {
-    background: var(--deep);
-    color: var(--cream);
-    padding: 4rem 6rem;
-    display: flex;
-    align-items: center;
-    gap: 6rem;
-  }
-  .intro-quote {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.8rem;
-    font-weight: 300;
-    font-style: italic;
-    line-height: 1.5;
-    flex: 1;
-    color: var(--clay);
-  }
-  .intro-text {
-    flex: 1;
-    font-size: 0.9rem;
-    color: rgba(250,247,242,0.75);
-    line-height: 1.9;
-  }
-
   /* SECTION BASE */
   section { padding: 6rem 6rem; }
   .section-eyebrow {
@@ -340,6 +316,132 @@
     transition: color 0.3s;
   }
   .service-card:hover .service-desc { color: rgba(250,247,242,0.7); }
+
+  /* NAV CTA */
+  .nav-cta {
+    display: inline-block;
+    padding: 0.7rem 1.5rem;
+    background: var(--deep);
+    color: var(--cream);
+    text-decoration: none;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .nav-cta:hover { background: var(--accent); }
+
+  /* PRICING */
+  .pricing { background: var(--warm-white); padding: 8rem 6rem; }
+  .pricing-header { text-align: center; margin-bottom: 1rem; }
+  .pricing-header .section-eyebrow,
+  .pricing-header .divider { margin-left: auto; margin-right: auto; }
+  .pricing-intro {
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.9;
+  }
+  .pricing-rates {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sienna);
+    text-align: center;
+    margin: 1.5rem auto 0;
+  }
+  .pricing-rates strong { color: var(--deep); }
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+  .price-card {
+    background: var(--cream);
+    border: 1px solid var(--sand);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .price-card.featured { border-color: var(--sienna); box-shadow: 0 12px 40px rgba(61,43,26,0.08); }
+  .price-flag {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    min-height: 0.9rem;
+  }
+  .price-tier {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--deep);
+    line-height: 1.2;
+  }
+  .price-hours {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin: 0.35rem 0 1.25rem;
+  }
+  .price-amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    color: var(--sienna);
+    line-height: 1;
+  }
+  .price-was {
+    text-decoration: line-through;
+    color: var(--muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+  }
+  .price-save {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    margin-top: 0.5rem;
+  }
+  .price-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.8;
+    margin: 1.5rem 0 2rem;
+    flex: 1;
+  }
+  .price-card .btn-primary { align-self: stretch; text-align: center; padding: 0.9rem 1rem; }
+  .price-note { font-size: 0.7rem; color: var(--muted); margin-top: 0.75rem; text-align: center; letter-spacing: 0.03em; }
+
+  /* RETAINERS */
+  .retainers {
+    margin-top: 1.5rem;
+    background: var(--cream);
+    border: 1px solid var(--sand);
+    padding: 2.5rem 2rem;
+    text-align: center;
+  }
+  .retainers-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    color: var(--deep);
+    margin-bottom: 0.5rem;
+  }
+  .retainers-sub { font-size: 0.82rem; color: var(--muted); line-height: 1.8; max-width: 520px; margin: 0 auto 2rem; }
+  .retainer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .retainer-opt { border: 1px solid var(--sand); background: var(--warm-white); padding: 1.75rem 1rem; }
+  .retainer-name { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sienna); margin-bottom: 0.5rem; }
+  .retainer-price { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; color: var(--deep); }
+  .retainer-price span { font-size: 0.8rem; color: var(--muted); }
+  .retainer-hours { font-size: 0.72rem; color: var(--muted); margin-top: 0.35rem; }
+  .retainer-opt a { display: inline-block; margin-top: 1rem; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--clay); padding-bottom: 2px; }
+  .retainer-opt a:hover { color: var(--deep); }
 
   /* WORK */
   .work { background: var(--warm-white); }
@@ -809,8 +911,6 @@
     .hero-stat-num { font-size: 1.5rem; }
 
     /* Intro band */
-    .intro-band { flex-direction: column; padding: 3rem 1.5rem; gap: 2rem; }
-    .intro-quote { font-size: 1.4rem; }
 
     /* Sections */
     section { padding: 4rem 1.5rem; }
@@ -818,6 +918,9 @@
 
     /* Services */
     .services-grid { grid-template-columns: 1fr; }
+    .price-grid { grid-template-columns: 1fr; }
+    .retainer-grid { grid-template-columns: 1fr; }
+    .nav-cta { display: none; }
 
     /* Work */
     .work-grid { grid-template-columns: 1fr; }
@@ -832,6 +935,7 @@
 
     /* CTA */
     .cta { padding: 5rem 1.5rem; }
+    .pricing { padding: 5rem 1.5rem; }
     .cta-buttons { flex-direction: column; align-items: center; gap: 1rem; }
     .btn-outline { margin-left: 0; }
 
@@ -883,11 +987,12 @@
   <ul class="nav-links" id="nav-links" role="list">
     <li><a href="#about">About</a></li>
     <li><a href="#services">Services</a></li>
+    <li><a href="#pricing">Pricing</a></li>
     <li><a href="#work">Work</a></li>
     <li><a href="#process">Process</a></li>
-    <li><a href="#recommendations">Recommendations</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
+  <a class="nav-cta" href="#" onclick="openBooking();return false;">Book a Call</a>
   <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-links">&#9776;</button>
 </nav>
 
@@ -904,8 +1009,8 @@
       Operational strategy and systems design for women entrepreneurs who are ready to stop improvising and start scaling with confidence, clarity, and a structure that lasts.
     </p>
     <div>
-      <a href="#contact" class="btn-primary">Work With Me</a>
-      <a href="#services" class="btn-outline">View Services</a>
+      <a href="#" onclick="openBooking();return false;" class="btn-primary">Book a Discovery Call</a>
+      <a href="#pricing" class="btn-outline">View Pricing</a>
     </div>
   </div>
   <div class="hero-right">
@@ -927,33 +1032,70 @@
   </div>
 </section>
 
-<!-- INTRO BAND -->
-<div class="intro-band">
-  <p class="intro-quote">"Great businesses aren't built on hustle alone, they're built on systems."</p>
-  <p class="intro-text">
-    Most women start a business because they're brilliant at what they do. But passion alone doesn't keep the lights on, the back end does. I help women entrepreneurs build the operational foundation that turns their great idea into a great company: clear processes, smart tools, a team structure that scales, and metrics that actually tell you what's working.
-  </p>
-</div>
-
-<!-- ABOUT -->
-<section id="about" class="about">
-  <div class="about-content">
-    <p class="section-eyebrow">About Cynthia</p>
-    <h2 class="section-title">Operations is the work behind the <em>work.</em></h2>
+<!-- PRICING -->
+<section id="pricing" class="pricing">
+  <div class="pricing-header">
+    <p class="section-eyebrow">Pricing</p>
+    <h2 class="section-title">Simple, mission-driven <em>pricing.</em></h2>
     <div class="divider"></div>
-    <p class="about-body">
-      I'm Cynthia Jones, an operations leader with over a decade of experience building the systems, teams, and support structures that make organizations run. I've led Operations at coding bootcamps, online universities, and virtual education programs. I'm always at the intersection of people, process, and technology.
-    </p>
-    <p class="about-body">
-      Now I bring that expertise directly to women who are building businesses of their own. Because the same operational thinking that helped me generate $200K+ in annual savings and 183% client growth can help scale your business. These results scale all the way down to a business of one and can change everything.
-    </p>
-    <div class="about-values">
-      <div class="about-value">Master's in Educational Leadership, Portland State University</div>
-      <div class="about-value">Former VP of Operations, App Academy</div>
-      <div class="about-value">10+ years building systems from scratch</div>
-      <div class="about-value">Based in Atlanta, serving clients nationwide</div>
+    <p class="pricing-intro">Every engagement starts with a free Discovery Call. From there, pick the level that fits your stage. BOS community rates give women entrepreneurs VP-level operations without the enterprise price tag.</p>
+    <p class="pricing-rates">Market rate <strong>$150/hr</strong> &nbsp;&middot;&nbsp; Your BOS rate <strong>$80/hr</strong></p>
+  </div>
+
+  <div class="price-grid">
+    <div class="price-card">
+      <p class="price-flag">Start here</p>
+      <p class="price-tier">VIP Strategy Day</p>
+      <p class="price-hours">4 hours</p>
+      <p class="price-amount"><span class="price-was">$1,500</span>$320<span class="price-save">You save $1,180</span></p>
+      <p class="price-desc">A deep-dive working session. We diagnose your operational gaps and build a prioritized 90-day action plan. You leave with a written roadmap of exactly what to build, in what order, and why.</p>
+      <a class="btn-primary" data-buy="vip">Book &amp; Pay, $320</a>
     </div>
-    <a href="#contact" class="btn-primary">Let's Connect</a>
+
+    <div class="price-card featured">
+      <p class="price-flag">Most popular</p>
+      <p class="price-tier">Starter Build</p>
+      <p class="price-hours">~40 hours &middot; flat rate</p>
+      <p class="price-amount"><span class="price-was">$6,000</span>$3,200<span class="price-save">You save $2,800</span></p>
+      <p class="price-desc">One core system built, documented, and handed off: a site with ordering, an automated email flow, a client onboarding system, or an operational playbook. Defined scope, timeline, and deliverable.</p>
+      <a class="btn-primary" data-buy="starterDeposit">Reserve, 50% Deposit</a>
+      <p class="price-note">$1,600 deposit today, balance at completion</p>
+    </div>
+
+    <div class="price-card">
+      <p class="price-flag">Full back end</p>
+      <p class="price-tier">Growth Build</p>
+      <p class="price-hours">~80 hours &middot; flat rate</p>
+      <p class="price-amount"><span class="price-was">$12,000</span>$6,400<span class="price-save">You save $5,600</span></p>
+      <p class="price-desc">Multiple systems built together as one integrated operational foundation, plus training and 30-day post-launch support. For businesses that need the whole back end built at once.</p>
+      <a class="btn-primary" data-buy="growthDeposit">Reserve, 50% Deposit</a>
+      <p class="price-note">$3,200 deposit today, balance at completion</p>
+    </div>
+  </div>
+
+  <div class="retainers">
+    <p class="retainers-title">Ongoing Partner Retainers</p>
+    <p class="retainers-sub">Ongoing operational support once your build is complete. Minimum 3-month commitment, billed monthly in advance.</p>
+    <div class="retainer-grid">
+      <div class="retainer-opt">
+        <p class="retainer-name">Maintenance</p>
+        <p class="retainer-price">$400<span>/mo</span></p>
+        <p class="retainer-hours">5 hrs/month</p>
+        <a data-buy="retainerMaintenance">Get started &rarr;</a>
+      </div>
+      <div class="retainer-opt">
+        <p class="retainer-name">Growth</p>
+        <p class="retainer-price">$800<span>/mo</span></p>
+        <p class="retainer-hours">10 hrs/month</p>
+        <a data-buy="retainerGrowth">Get started &rarr;</a>
+      </div>
+      <div class="retainer-opt">
+        <p class="retainer-name">Partner</p>
+        <p class="retainer-price">$1,200<span>/mo</span></p>
+        <p class="retainer-hours">15 hrs/month</p>
+        <a data-buy="retainerPartner">Get started &rarr;</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -964,7 +1106,7 @@
     <h2 class="section-title">Services designed for <em>real businesses.</em></h2>
     <div class="divider"></div>
     <p class="services-intro">
-      Whether you're setting up from scratch or cleaning up what you've already built, these engagements are designed to give you a clear path forward, not to overwhelm.
+      These are the building blocks I work in. Every Starter and Growth Build is assembled from the areas below, scoped to exactly what your business needs.
     </p>
   </div>
   <div class="services-grid">
@@ -1131,6 +1273,28 @@
         <span class="rec-role">EdTech Executive and Engineer</span>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="about">
+  <div class="about-content">
+    <p class="section-eyebrow">About Cynthia</p>
+    <h2 class="section-title">Operations is the work behind the <em>work.</em></h2>
+    <div class="divider"></div>
+    <p class="about-body">
+      I'm Cynthia Jones, an operations leader with over a decade of experience building the systems, teams, and support structures that make organizations run. I've led Operations at coding bootcamps, online universities, and virtual education programs. I'm always at the intersection of people, process, and technology.
+    </p>
+    <p class="about-body">
+      Now I bring that expertise directly to women who are building businesses of their own. Because the same operational thinking that helped me generate $200K+ in annual savings and 183% client growth can help scale your business. These results scale all the way down to a business of one and can change everything.
+    </p>
+    <div class="about-values">
+      <div class="about-value">Master's in Educational Leadership, Portland State University</div>
+      <div class="about-value">Former VP of Operations, App Academy</div>
+      <div class="about-value">10+ years building systems from scratch</div>
+      <div class="about-value">Based in Atlanta, serving clients nationwide</div>
+    </div>
+    <a href="#" onclick="openBooking();return false;" class="btn-primary">Book a Discovery Call</a>
   </div>
 </section>
 
@@ -1343,6 +1507,35 @@ async function handleSubmit(e) {
     alert('Something went wrong. Please try again or email cynthia@thebuildersopsstudio.com directly.');
   }
 }
+</script>
+
+<script>
+// Lead-magnet + checkout wiring.
+// ponytail: paste your Stripe Payment Link URLs below to switch a tier from
+// "book a call" to real checkout. Leave blank and the button books the free
+// Discovery Call instead, so nothing is ever broken.
+const STRIPE_LINKS = {
+  vip: '',                 // VIP Strategy Day, $320
+  starterDeposit: '',      // Starter Build 50% deposit, $1,600
+  growthDeposit: '',       // Growth Build 50% deposit, $3,200
+  retainerMaintenance: '', // Maintenance, $400/mo
+  retainerGrowth: '',      // Growth retainer, $800/mo
+  retainerPartner: ''      // Partner retainer, $1,200/mo
+};
+document.querySelectorAll('[data-buy]').forEach(function(btn) {
+  var url = STRIPE_LINKS[btn.getAttribute('data-buy')];
+  if (url) {
+    btn.href = url;
+    btn.target = '_blank';
+    btn.rel = 'noopener';
+    return;
+  }
+  btn.href = '#';
+  btn.addEventListener('click', function(e) { e.preventDefault(); openBooking(); });
+  btn.textContent = btn.classList.contains('btn-primary') ? 'Book a Discovery Call' : 'Book a call →';
+  var note = btn.parentNode.querySelector('.price-note');
+  if (note) note.style.display = 'none';
+});
 </script>
 
 </body>
