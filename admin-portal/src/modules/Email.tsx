@@ -21,6 +21,7 @@ type EmailDoc = {
 type GmailMeta = {
   connected?: boolean;
   connectedEmail?: string | null;
+  accounts?: Array<{ email: string; connectedAt: number }>;
   lastSync?: number;
   count?: number;
 };
@@ -159,10 +160,15 @@ export default function Email() {
         sub="Gmail, sorted by what it means for the business. Opportunities surface themselves."
         right={
           connected ? (
-            <Button variant="secondary" onClick={() => busy === null && sync()}>
-              <RefreshCw size={15} className={busy === "sync" ? "animate-spin" : ""} />
-              {busy === "sync" ? "Syncing…" : "Sync now"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => busy === null && connect()}>
+                <Mail size={15} /> {busy === "connect" ? "Opening Google…" : "Add account"}
+              </Button>
+              <Button variant="secondary" onClick={() => busy === null && sync()}>
+                <RefreshCw size={15} className={busy === "sync" ? "animate-spin" : ""} />
+                {busy === "sync" ? "Syncing…" : "Sync now"}
+              </Button>
+            </div>
           ) : (
             <Button variant="secondary" onClick={() => busy === null && connect()}>
               <Mail size={15} /> {busy === "connect" ? "Opening Google…" : "Connect Gmail"}
@@ -240,10 +246,17 @@ export default function Email() {
             </Card>
 
             {meta?.lastSync && (
-              <p className="mt-3 px-1 text-xs text-brown-mid">
-                {meta.connectedEmail ? `${meta.connectedEmail} · ` : ""}last synced{" "}
-                {lastSyncLabel(meta.lastSync)}
-              </p>
+              <div className="mt-3 px-1 text-xs text-brown-mid">
+                {(meta.accounts && meta.accounts.length > 0
+                  ? meta.accounts.map((a) => a.email)
+                  : meta.connectedEmail
+                  ? [meta.connectedEmail]
+                  : []
+                ).map((email) => (
+                  <p key={email}>{email}</p>
+                ))}
+                <p>last synced {lastSyncLabel(meta.lastSync)}</p>
+              </div>
             )}
           </div>
 

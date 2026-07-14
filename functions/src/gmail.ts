@@ -127,14 +127,30 @@ export const gmailOauthCallback = onRequest(
       const grantedScopes = tokens.scope ?? "";
 
       // Refresh token: server-only path, never exposed to the client.
-      await db.doc(`users/${uid}/private/gmail`).set({
+      // Multi-account: upsert into the accounts array keyed by email.
+      const accountsRef = db.doc(`users/${uid}/private/gmailAccounts`);
+      const accountsSnap = await accountsRef.get();
+      const existingAccounts: any[] = accountsSnap.exists
+        ? ((accountsSnap.data() as any).accounts ?? [])
+        : [];
+      const newAccount = {
+        email: connectedEmail,
         refreshToken: tokens.refresh_token,
-        connectedEmail,
         scopes: grantedScopes,
         connectedAt: Date.now(),
-      });
+      };
+      const idx = existingAccounts.findIndex((a: any) => a.email === connectedEmail);
+      if (idx >= 0) existingAccounts[idx] = newAccount;
+      else existingAccounts.push(newAccount);
+      await accountsRef.set({ accounts: existingAccounts });
       await db.doc(`users/${uid}/meta/gmail`).set(
-        { connected: true, connectedEmail, scopes: grantedScopes, connectedAt: Date.now() },
+        {
+          connected: true,
+          connectedEmail,
+          accounts: existingAccounts.map((a: any) => ({ email: a.email, connectedAt: a.connectedAt })),
+          scopes: grantedScopes,
+          connectedAt: Date.now(),
+        },
         { merge: true }
       );
 
@@ -170,38 +186,51 @@ export const syncGmail = onRequest(
     try {
       const { uid } = await requireUser(req);
 
-      const tokenSnap = await db.doc(`users/${uid}/private/gmail`).get();
-      const refreshToken = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
-      if (!refreshToken) throw new HttpError(412, "Gmail isn't connected yet.");
+      // Multi-account: load from new path, fall back to legacy single-account doc.
+      const accountsSnap = await db.doc(`users/${uid}/private/gmailAccounts`).get();
+      let accounts: Array<{ email: string; refreshToken: string }> = accountsSnap.exists
+        ? ((accountsSnap.data() as any).accounts ?? [])
+        : [];
+      if (accounts.length === 0) {
+        const legacySnap = await db.doc(`users/${uid}/private/gmail`).get();
+        if (legacySnap.exists) {
+          const d = legacySnap.data() as any;
+          if (d.refreshToken) accounts = [{ email: d.connectedEmail ?? "", refreshToken: d.refreshToken }];
+        }
+      }
+      if (accounts.length === 0) throw new HttpError(412, "Gmail isn't connected yet.");
 
-      const client = oauthClient();
-      client.setCredentials({ refresh_token: refreshToken });
-      const gmail = google.gmail({ version: "v1", auth: client });
-
-      // Recent inbox only. Read-only, capped so a sync stays fast and cheap.
-      const list = await gmail.users.messages.list({
-        userId: "me",
-        q: "in:inbox newer_than:14d",
-        maxResults: 30,
-      });
-      const ids = (list.data.messages ?? []).map((m) => m.id!).filter(Boolean);
-
+      // Fetch up to 30 messages per account; prefix Firestore doc key with account
+      // index to prevent cross-account ID collisions.
       const raw: RawEmail[] = [];
-      for (const id of ids) {
-        const msg = await gmail.users.messages.get({
+      for (let acctIdx = 0; acctIdx < accounts.length; acctIdx++) {
+        const client = oauthClient();
+        client.setCredentials({ refresh_token: accounts[acctIdx].refreshToken });
+        const gmail = google.gmail({ version: "v1", auth: client });
+
+        const list = await gmail.users.messages.list({
           userId: "me",
-          id,
-          format: "metadata",
-          metadataHeaders: ["From", "Subject", "Date"],
+          q: "in:inbox newer_than:14d",
+          maxResults: 30,
         });
-        const headers = msg.data.payload?.headers ?? undefined;
-        raw.push({
-          id,
-          from: header(headers, "From"),
-          subject: header(headers, "Subject"),
-          snippet: (msg.data.snippet ?? "").slice(0, 300),
-          date: header(headers, "Date"),
-        });
+        const ids = (list.data.messages ?? []).map((m) => m.id!).filter(Boolean);
+
+        for (const id of ids) {
+          const msg = await gmail.users.messages.get({
+            userId: "me",
+            id,
+            format: "metadata",
+            metadataHeaders: ["From", "Subject", "Date"],
+          });
+          const headers = msg.data.payload?.headers ?? undefined;
+          raw.push({
+            id: `${acctIdx}_${id}`,
+            from: header(headers, "From"),
+            subject: header(headers, "Subject"),
+            snippet: (msg.data.snippet ?? "").slice(0, 300),
+            date: header(headers, "Date"),
+          });
+        }
       }
 
       const categorized = raw.length ? await categorize(raw) : [];
@@ -313,8 +342,16 @@ export const syncMeetings = onRequest(
     try {
       const { uid } = await requireUser(req);
 
-      const tokenSnap = await db.doc(`users/${uid}/private/gmail`).get();
-      const refreshToken = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
+      // Use the first connected account's token (Drive scope is per-account).
+      const accountsSnap = await db.doc(`users/${uid}/private/gmailAccounts`).get();
+      const accounts: any[] = accountsSnap.exists
+        ? ((accountsSnap.data() as any).accounts ?? [])
+        : [];
+      let refreshToken: string | null = accounts.length > 0 ? accounts[0].refreshToken : null;
+      if (!refreshToken) {
+        const legacySnap = await db.doc(`users/${uid}/private/gmail`).get();
+        refreshToken = legacySnap.exists ? (legacySnap.data() as any).refreshToken : null;
+      }
       if (!refreshToken) throw new HttpError(412, "Connect your Google account first.");
 
       const client = oauthClient();
