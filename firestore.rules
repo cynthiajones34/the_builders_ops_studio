@@ -44,7 +44,7 @@ service cloud.firestore {
 
     // SDR prospects from the BOS SDR agent pipeline.
     match /prospects/{doc} {
-      allow read: if authorized();
+      allow read, update: if authorized();
     }
 
     // Outreach log — drafted messages that user approves/rejects.

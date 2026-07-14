@@ -9,7 +9,8 @@
       "CHANGELOG.md",
       "VERSION",
       "admin-portal/**",
-      "functions/**"
+      "functions/**",
+      "functions-leadmagnet/**"
     ],
     "rewrites": [
       { "source": "/api/askAdvisor", "function": { "functionId": "askAdvisor", "region": "us-central1" } },
@@ -36,11 +37,19 @@
       { "source": "/admin/**", "destination": "/admin/index.html" }
     ]
   },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs22",
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
-  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    },
+    {
+      "source": "functions-leadmagnet",
+      "codebase": "leadmagnet",
+      "runtime": "nodejs20"
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules"
   }

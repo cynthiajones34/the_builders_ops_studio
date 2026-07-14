@@ -5,6 +5,7 @@ import {
   PenLine,
   Mail,
   Video,
+  ClipboardList,
   FolderKanban,
   Users,
   TrendingUp,
@@ -20,6 +21,7 @@ import Social from "./modules/Social";
 import Content from "./modules/Content";
 import Email from "./modules/Email";
 import Meetings from "./modules/Meetings";
+import MeetingPrep from "./modules/MeetingPrep";
 import Projects from "./modules/Projects";
 import Crm from "./modules/Crm";
 import Pipeline from "./modules/Pipeline";
@@ -49,6 +51,7 @@ export const sections: Section[] = [
 
   { path: "/email", label: "Email Intelligence", group: "Operate", icon: Mail, Component: Email },
   { path: "/meetings", label: "Meeting Intelligence", group: "Operate", icon: Video, Component: Meetings },
+  { path: "/meeting-prep", label: "Meeting Prep", group: "Operate", icon: ClipboardList, Component: MeetingPrep },
   { path: "/projects", label: "Projects", group: "Operate", icon: FolderKanban, Component: Projects },
 
   { path: "/crm", label: "CRM & Relationships", group: "Business", icon: Users, Component: Crm },
