@@ -4,6 +4,8 @@ import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
 import { randomBytes } from "crypto";
 import { db, CORS_ORIGINS, HttpError, requireUser } from "./shared";
+import { RESEND_API_KEY, sendEmail, brandedEmail } from "./email";
+import { INTAKE_FORM_URL, intakeDeadlineClause } from "./discovery";
 
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 const GOOGLE_OAUTH_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
@@ -161,7 +163,7 @@ function header(
  */
 export const syncGmail = onRequest(
   {
-    secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, ANTHROPIC_API_KEY],
+    secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, ANTHROPIC_API_KEY, RESEND_API_KEY],
     region: REGION,
     cors: CORS_ORIGINS,
     timeoutSeconds: 300,
@@ -219,6 +221,87 @@ export const syncGmail = onRequest(
       );
       await batch.commit();
 
+      // Discovery booking confirmations move the matching contact to discovery
+      // stage and record the call date. Match by prospect name.
+      const allBookings = categorized.filter((e) => e.discovery?.client);
+      // One booking per prospect per sync (booking + reminder emails can both
+      // flag the same person); later syncs match the contact created here.
+      const seen = new Set<string>();
+      const bookings = allBookings.filter((e) => {
+        const k = e.discovery!.client.trim().toLowerCase();
+        if (!k || seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      if (bookings.length) {
+        const now = new Date().toISOString();
+        const col = db.collection(`users/${uid}/contacts`);
+        const contactsSnap = await col.get();
+        const contacts = contactsSnap.docs.map((d) => ({ ref: d.ref, c: d.data() as any }));
+        const cbatch = db.batch();
+        let cchanges = 0;
+        const toGreet: { ref: FirebaseFirestore.DocumentReference; firstName: string; email: string; discoveryDate: string }[] = [];
+
+        for (const b of bookings) {
+          const clientLower = b.discovery!.client.toLowerCase();
+          const discoveryDate = b.discovery!.datetime || b.date;
+          const match = contacts.find(({ c }) => {
+            const full = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim().toLowerCase();
+            return full && clientLower.includes(full);
+          });
+
+          if (match) {
+            cbatch.update(match.ref, { stage: "discovery", discoveryDate, lastContactDate: now });
+            cchanges++;
+            if (match.c.email && !match.c.greetingEmailSent) {
+              toGreet.push({ ref: match.ref, firstName: match.c.firstName || "there", email: match.c.email, discoveryDate });
+            }
+          } else {
+            // Cold booking: create the lead so it lands in the CRM. Greet only
+            // when the confirmation carried the prospect's email.
+            const [firstName, ...rest] = b.discovery!.client.trim().split(/\s+/);
+            const email = (b.discovery!.clientEmail || "").trim();
+            const ref = col.doc();
+            cbatch.set(ref, {
+              firstName,
+              lastName: rest.join(" "),
+              email,
+              phase: "Lead",
+              stage: "discovery",
+              discoveryDate,
+              lastContactDate: now,
+              tags: ["Discovery Booking"],
+              createdAt: Date.now(),
+            });
+            cchanges++;
+            if (email) {
+              toGreet.push({ ref, firstName: firstName || "there", email, discoveryDate });
+            }
+          }
+        }
+        if (cchanges) await cbatch.commit();
+
+        // Fire the branded greeting once per newly booked prospect, and flag the
+        // contact only after a successful send so a failure retries next sync.
+        for (const g of toGreet) {
+          try {
+            const { html, text } = brandedEmail({
+              heading: "Thank you for scheduling",
+              paragraphs: [
+                `Hi ${g.firstName},`,
+                "Thank you for booking a call. Looking forward to digging into your project with you.",
+                `To make the most of our time, please complete the intake form ${intakeDeadlineClause(g.discoveryDate)}. Your answers get reviewed in advance so our conversation starts prepared, not from scratch.`,
+              ],
+              formUrl: INTAKE_FORM_URL,
+            });
+            await sendEmail(g.email, "Thank you for scheduling with Cynthia Jones", text, html);
+            await g.ref.update({ greetingEmailSent: true, greetingEmailSentAt: new Date().toISOString() });
+          } catch (err) {
+            console.error("greeting email failed", err);
+          }
+        }
+      }
+
       res.json({ count: categorized.length });
     } catch (err: any) {
       const status = err instanceof HttpError ? err.status : 500;
@@ -230,7 +313,12 @@ export const syncGmail = onRequest(
   }
 );
 
-type Categorized = RawEmail & { category: string; priority: boolean; why: string };
+type Categorized = RawEmail & {
+  category: string;
+  priority: boolean;
+  why: string;
+  discovery?: { client: string; datetime: string; clientEmail: string } | null;
+};
 
 async function categorize(raw: RawEmail[]): Promise<Categorized[]> {
   const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
@@ -250,9 +338,10 @@ Rules:
 - "Admin": newsletters, notifications, calendar, everything else.
 - priority = true only if it needs her personal attention soon (a real person waiting on a real decision or a deadline). Bulk and automated mail is never priority.
 - "why": one short sentence, no em dashes, on what it means for the business. Never start with "I".
+- "discovery": set this ONLY when the email is a brand-new booking confirmation for a first discovery, consult, or intro call that was just scheduled (subjects like "Appointment booked", "New event", "scheduled"). Her discovery call is titled "Builder's Ops Call", so an "Appointment booked: Builder's Ops Call" is the clearest case. Set it to {"client":"<the prospect's full name>","datetime":"<ISO 8601 date-time of the call, best effort>","clientEmail":"<the prospect's email address if it appears anywhere in the email, else empty string>"}. Do NOT set discovery for reminders, meeting notes, prep emails, follow-ups, thank-you notes, or calendar accept/update/cancel notices, even if they mention "Builder's Ops Call". For anything that is not a fresh booking confirmation, use null.
 
 Return ONLY a JSON array, one object per input id, shape:
-[{"id":"<id>","category":"<one of the list>","priority":true|false,"why":"<one sentence>"}]`;
+[{"id":"<id>","category":"<one of the list>","priority":true|false,"why":"<one sentence>","discovery":{"client":"<name>","datetime":"<ISO>","clientEmail":"<email or empty>"}|null}]`;
 
   const payload = raw.map((r) => ({
     id: r.id,
@@ -274,7 +363,13 @@ Return ONLY a JSON array, one object per input id, shape:
     .join("")
     .trim();
 
-  let parsed: { id: string; category: string; priority: boolean; why: string }[] = [];
+  let parsed: {
+    id: string;
+    category: string;
+    priority: boolean;
+    why: string;
+    discovery?: { client: string; datetime: string; clientEmail?: string } | null;
+  }[] = [];
   try {
     const start = text.indexOf("[");
     const end = text.lastIndexOf("]");
@@ -293,6 +388,14 @@ Return ONLY a JSON array, one object per input id, shape:
       category,
       priority: Boolean(c?.priority),
       why: typeof c?.why === "string" ? c.why : "",
+      discovery:
+        c?.discovery && typeof c.discovery.client === "string"
+          ? {
+              client: c.discovery.client,
+              datetime: String(c.discovery.datetime ?? ""),
+              clientEmail: String(c.discovery.clientEmail ?? ""),
+            }
+          : null,
     };
   });
 }
@@ -365,6 +468,10 @@ export const syncMeetings = onRequest(
           actions: extracted.actions,
           decisions: extracted.decisions,
           opportunities: extracted.opportunities,
+          people: extracted.people,
+          isDiscovery: extracted.isDiscovery,
+          proposalMentioned: extracted.proposalMentioned,
+          proposalSentDate: extracted.proposalSentDate,
           docUrl: f.webViewLink ?? "",
         });
       }
@@ -380,6 +487,38 @@ export const syncMeetings = onRequest(
         { merge: true }
       );
       await batch.commit();
+
+      // Meeting-driven lead status: match contacts by full name appearing in a
+      // meeting's people list or title/summary; the most recent meeting wins.
+      const contactsSnap = await db.collection(`users/${uid}/contacts`).get();
+      if (!contactsSnap.empty && meetings.length) {
+        const recentFirst = [...meetings].sort((a, b) => (a.date < b.date ? 1 : -1));
+        const cbatch = db.batch();
+        let cchanges = 0;
+        for (const cdoc of contactsSnap.docs) {
+          const c = cdoc.data() as any;
+          const full = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim().toLowerCase();
+          if (!full) continue;
+          const m = recentFirst.find(
+            (mtg) =>
+              (mtg.people ?? []).some((p: string) => p.toLowerCase().includes(full)) ||
+              `${mtg.title} ${mtg.summary}`.toLowerCase().includes(full)
+          );
+          if (!m) continue;
+          const update: Record<string, unknown> = { lastContactDate: m.date };
+          if (m.isDiscovery && !c.stage) update.stage = "discovery";
+          const openForProposal =
+            !c.proposalStatus || ["not_started", "pending"].includes(c.proposalStatus);
+          if (m.proposalMentioned && openForProposal) {
+            update.proposalStatus = "pending";
+            update.stage = "proposal";
+            update.proposalSentDate = m.proposalSentDate || m.date;
+          }
+          cbatch.update(cdoc.ref, update);
+          cchanges++;
+        }
+        if (cchanges) await cbatch.commit();
+      }
 
       res.json({ count: meetings.length });
     } catch (err: any) {
@@ -398,6 +537,10 @@ type MeetingExtract = {
   actions: string[];
   decisions: string[];
   opportunities: string[];
+  people: string[];
+  isDiscovery: boolean;
+  proposalMentioned: boolean;
+  proposalSentDate: string | null;
 };
 
 async function extractMeeting(name: string, text: string): Promise<MeetingExtract> {
@@ -408,10 +551,14 @@ async function extractMeeting(name: string, text: string): Promise<MeetingExtrac
 Rules: no em dashes; short sentences; never start a line with "I"; be specific and reference real names and commitments from the notes; don't invent anything not in the text.
 
 Return ONLY JSON with this exact shape:
-{"title":"<short human meeting title>","summary":"<2 to 3 sentence summary>","actions":["..."],"decisions":["..."],"opportunities":["..."]}
+{"title":"<short human meeting title>","summary":"<2 to 3 sentence summary>","actions":["..."],"decisions":["..."],"opportunities":["..."],"people":["<external attendee full names, not Cynthia>"],"isDiscovery":<boolean>,"proposalMentioned":<boolean>,"proposalSentDate":<"YYYY-MM-DD" or null>}
 - actions: concrete next steps, with the owner in parentheses if the notes name one.
 - decisions: things that were decided. Empty array if none.
-- opportunities: revenue, speaking, partnership, or content openings worth pursuing. Empty array if none.`;
+- opportunities: revenue, speaking, partnership, or content openings worth pursuing. Empty array if none.
+- people: external attendees or prospects by full name. Do not include Cynthia. Empty array if none.
+- isDiscovery: true if this reads as a discovery, intro, or first sales call. Her discovery calls are titled "Builder's Ops Call", so treat those as discovery.
+- proposalMentioned: true if a proposal, quote, or SOW was sent or discussed.
+- proposalSentDate: the date a proposal was sent if the notes state one, else null.`;
 
   const response = await anthropic.messages.create({
     model: "claude-opus-4-8",
@@ -435,13 +582,61 @@ Return ONLY JSON with this exact shape:
       actions: clean(p.actions),
       decisions: clean(p.decisions),
       opportunities: clean(p.opportunities),
+      people: clean(p.people),
+      isDiscovery: p.isDiscovery === true,
+      proposalMentioned: p.proposalMentioned === true,
+      proposalSentDate: typeof p.proposalSentDate === "string" ? p.proposalSentDate : null,
     };
   } catch {
-    return { title: name, summary: "", actions: [], decisions: [], opportunities: [] };
+    return {
+      title: name, summary: "", actions: [], decisions: [], opportunities: [],
+      people: [], isDiscovery: false, proposalMentioned: false, proposalSentDate: null,
+    };
   }
 }
 
 const INTAKE_SHEET_ID = "1GA8prJq8_OdtRWYTnX8b3LxYWQll4-C7Tfj1_lLc_MQ";
+
+export type IntakeRow = {
+  id: number;
+  clientName: string;
+  businessName: string;
+  businessType: string;
+  email: string;
+  timestamp: string;
+  raw: Record<string, string>;
+};
+
+// Read the intake Google Sheet into structured rows. Shared by the HTTP
+// endpoint (Opportunities tab) and the reminder scheduler.
+export async function readIntakeRows(refreshToken: string): Promise<IntakeRow[]> {
+  const client = oauthClient();
+  client.setCredentials({ refresh_token: refreshToken });
+  const sheets = google.sheets({ version: "v4", auth: client });
+
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId: INTAKE_SHEET_ID,
+    range: "Form Responses 1",
+  });
+
+  const rows = result.data.values ?? [];
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
+  return rows.slice(1).map((row, idx) => {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
+    return {
+      id: idx,
+      clientName: obj["Client Name"] ?? "",
+      businessName: obj["Business Name"] ?? "",
+      businessType: obj["Business Type"] ?? "",
+      email: obj["Email"] ?? "",
+      timestamp: obj["Timestamp"] ?? "",
+      raw: obj,
+    };
+  });
+}
 
 export const fetchIntakeResponses = onRequest(
   {
@@ -457,37 +652,7 @@ export const fetchIntakeResponses = onRequest(
       const refreshToken = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
       if (!refreshToken) throw new HttpError(412, "Connect Gmail first to access the intake sheet.");
 
-      const client = oauthClient();
-      client.setCredentials({ refresh_token: refreshToken });
-      const sheets = google.sheets({ version: "v4", auth: client });
-
-      const result = await sheets.spreadsheets.values.get({
-        spreadsheetId: INTAKE_SHEET_ID,
-        range: "Form Responses 1",
-      });
-
-      const rows = result.data.values ?? [];
-      if (rows.length < 2) {
-        res.json({ responses: [] });
-        return;
-      }
-
-      const headers = rows[0];
-      const responses = rows.slice(1).map((row, idx) => {
-        const obj: Record<string, string> = {};
-        headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
-        return {
-          id: idx,
-          clientName: obj["Client Name"] ?? "",
-          businessName: obj["Business Name"] ?? "",
-          businessType: obj["Business Type"] ?? "",
-          email: obj["Email"] ?? "",
-          timestamp: obj["Timestamp"] ?? "",
-          raw: obj,
-        };
-      });
-
-      res.json({ responses });
+      res.json({ responses: await readIntakeRows(refreshToken) });
     } catch (err: any) {
       const status = err instanceof HttpError ? err.status : 500;
       if (status >= 500) console.error("fetchIntakeResponses failed", err?.message);

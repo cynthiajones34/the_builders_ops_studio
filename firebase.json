@@ -32,6 +32,7 @@
       { "source": "/api/linkedinAuthUrl", "function": { "functionId": "linkedinAuthUrl", "region": "us-central1" } },
       { "source": "/api/linkedinOauthCallback", "function": { "functionId": "linkedinOauthCallback", "region": "us-central1" } },
       { "source": "/api/linkedinInsights", "function": { "functionId": "linkedinInsights", "region": "us-central1" } },
+      { "source": "/api/joinSprintWaitlist", "function": { "functionId": "joinSprintWaitlist", "region": "us-central1" } },
       { "source": "/admin/**", "destination": "/admin/index.html" }
     ]
   },

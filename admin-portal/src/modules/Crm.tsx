@@ -54,7 +54,19 @@ type Contact = {
   notes?: string;
   links?: { label: string; url: string }[];
   addedAt: number;
+  // Deal tracking (feeds the nightly flagging + Deal Brief dashboard).
+  stage?: string;
+  proposalStatus?: string;
+  proposalSentDate?: string;
+  dealValue?: string;
+  meetingSource?: string;
+  lastContactDate?: string;
+  needsFollowup?: boolean;
+  urgent?: boolean;
 };
+
+const STAGES = ["", "discovery", "proposal", "negotiation", "closed"] as const;
+const PROPOSAL_STATUSES = ["", "not_started", "pending", "awaiting_response", "closed"] as const;
 
 function getFullName(contact: Contact): string {
   return `${contact.firstName} ${contact.lastName}`.trim();
@@ -98,6 +110,14 @@ export default function Crm() {
           notes: data.notes || '',
           links: Array.isArray(data.links) ? data.links : [],
           addedAt: data.addedAt || Date.now(),
+          stage: data.stage || '',
+          proposalStatus: data.proposalStatus || '',
+          proposalSentDate: data.proposalSentDate || '',
+          dealValue: data.dealValue ? String(data.dealValue) : '',
+          meetingSource: data.meetingSource || '',
+          lastContactDate: data.lastContactDate || '',
+          needsFollowup: !!data.needsFollowup,
+          urgent: !!data.urgent,
         } as Contact;
       });
       setContacts(all);
@@ -565,6 +585,13 @@ function ContactDetail({
     await updateDoc(doc(db, "users", uid, "contacts", contact.id), { [field]: value });
   }
 
+  async function markContacted() {
+    await updateDoc(doc(db, "users", uid, "contacts", contact.id), {
+      lastContactDate: new Date().toISOString(),
+      needsFollowup: false,
+    });
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <button onClick={onBack} className="mb-4 flex items-center gap-1 text-xs font-semibold text-clay hover:underline">
@@ -609,6 +636,50 @@ function ContactDetail({
               <EditableField label="Social Media" value={contact.socialMedia} onSave={(v) => updateField("socialMedia", v)} />
               <EditableField label="Address" value={contact.address} onSave={(v) => updateField("address", v)} />
             </div>
+          </Card>
+
+          {/* Deal tracking */}
+          <Card>
+            <div className="mb-2 flex items-center justify-between">
+              <Eyebrow>Deal Tracking</Eyebrow>
+              <button onClick={markContacted}
+                className="text-[11px] font-semibold text-clay hover:underline">
+                Mark as contacted
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brown-mid/60">Stage</p>
+                <select value={contact.stage || ""} onChange={(e) => updateField("stage", e.target.value)}
+                  className="mt-0.5 w-full rounded-lg border border-sand bg-light px-2 py-1 text-sm text-brown outline-none focus:border-clay">
+                  {STAGES.map((s) => <option key={s} value={s}>{s || "Not set"}</option>)}
+                </select>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brown-mid/60">Proposal Status</p>
+                <select value={contact.proposalStatus || ""} onChange={(e) => updateField("proposalStatus", e.target.value)}
+                  className="mt-0.5 w-full rounded-lg border border-sand bg-light px-2 py-1 text-sm text-brown outline-none focus:border-clay">
+                  {PROPOSAL_STATUSES.map((s) => <option key={s} value={s}>{s || "Not set"}</option>)}
+                </select>
+              </div>
+              <EditableField label="Proposal Sent (YYYY-MM-DD)" value={contact.proposalSentDate} onSave={(v) => updateField("proposalSentDate", v)} />
+              <EditableField label="Deal Value" value={contact.dealValue} onSave={(v) => updateField("dealValue", v)} />
+              <EditableField label="Meeting Source" value={contact.meetingSource} onSave={(v) => updateField("meetingSource", v)} />
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brown-mid/60">Last Contact</p>
+                <p className="mt-0.5 text-sm text-brown">
+                  {contact.lastContactDate
+                    ? contact.lastContactDate.slice(0, 10)
+                    : <span className="text-brown-mid/40">Not set</span>}
+                </p>
+              </div>
+            </div>
+            {(contact.needsFollowup || contact.urgent) && (
+              <div className="mt-3 flex gap-2 border-t border-sand pt-2">
+                {contact.needsFollowup && <Badge tone="warning">Needs follow-up</Badge>}
+                {contact.urgent && <Badge tone="clay">Urgent</Badge>}
+              </div>
+            )}
           </Card>
 
           {/* Notes */}

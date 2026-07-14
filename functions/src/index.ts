@@ -3,11 +3,51 @@ import { onSchedule } from "firebase-functions/scheduler";
 import { defineSecret } from "firebase-functions/params";
 import Anthropic from "@anthropic-ai/sdk";
 import { CORS_ORIGINS, HttpError, requireUser, db } from "./shared";
+import { sendEmailSMS, sendEmail, brandedEmail, RESEND_API_KEY } from "./email";
+import { readIntakeRows } from "./gmail";
+import { INTAKE_FORM_URL, hoursUntil, dueReminder, todayOrTomorrow } from "./discovery";
 
 // Gmail → Email Intelligence integration (OAuth + sync + categorization).
 export { gmailAuthUrl, gmailOauthCallback, syncGmail, syncMeetings, fetchIntakeResponses } from "./gmail";
 
+// Fix One Thing Sprint: waitlist capture (registration runs on Stripe Payment Links).
+export { joinSprintWaitlist } from "./sprint";
+
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const GOOGLE_OAUTH_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
+const GOOGLE_OAUTH_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
+
+// Social integrations. Bound per-function via `secrets: [...]` so the values
+// are injected into process.env at runtime (Firebase Functions v2 secrets).
+const SOCIAL_INSTAGRAM_APP_ID = defineSecret("SOCIAL_INSTAGRAM_APP_ID");
+const SOCIAL_INSTAGRAM_APP_SECRET = defineSecret("SOCIAL_INSTAGRAM_APP_SECRET");
+const SOCIAL_LINKEDIN_CLIENT_ID = defineSecret("SOCIAL_LINKEDIN_CLIENT_ID");
+const SOCIAL_LINKEDIN_CLIENT_SECRET = defineSecret("SOCIAL_LINKEDIN_CLIENT_SECRET");
+
+// OAuth callbacks run on the cloudfunctions.net domain, so the post-connect
+// redirect must be an absolute URL back to the portal (a relative "/admin/..."
+// would resolve against cloudfunctions.net and 404). Mirrors the Gmail flow.
+const SOCIAL_RETURN_URL = "https://www.thebuildersopsstudio.com/admin/#/social";
+
+// Format a count compactly for dashboard display: 12500 -> "12.5K", 1.2e6 -> "1.2M".
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+// Weekdays elapsed since an ISO date (excludes weekends).
+function businessDaysSince(iso: string): number {
+  const cursor = new Date(iso);
+  const now = new Date();
+  let days = 0;
+  while (cursor < now) {
+    cursor.setDate(cursor.getDate() + 1);
+    const wd = cursor.getDay();
+    if (wd !== 0 && wd !== 6) days++;
+  }
+  return days;
+}
 
 // Cynthia's brand voice, from the BOS Brand Guide 2026. Every AI word the
 // portal produces runs through this so it sounds like her, not a chatbot.
@@ -741,10 +781,10 @@ export const syncIntelligentReports = onSchedule(
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
       // Get all users
-      const usersSnap = await db.collection("users").get();
+      const userRefs = await db.collection("users").listDocuments();
 
-      for (const userDoc of usersSnap.docs) {
-        const uid = userDoc.id;
+      for (const userRef of userRefs) {
+        const uid = userRef.id;
 
         // Get user's emails and meetings
         const [emailSnap, meetingSnap] = await Promise.all([
@@ -830,10 +870,318 @@ Return ONLY JSON: {"blocks":[{"label":"<block name>","items":["<short line>", ..
 );
 
 /**
+ * Nightly lead flagging at 07:30 ET, before the morning brief. Derives
+ * needsFollowup and awaiting-response/urgent flags from contact dates that the
+ * CRM (or later the meeting/calendar sync) populates. No external calls.
+ */
+const FOLLOWUP_THRESHOLD_DAYS = 2;
+
+export const autoFlagLeads = onSchedule(
+  { schedule: "30 7 * * *", timeZone: "America/New_York", region: "us-central1" },
+  async () => {
+    try {
+      const userRefs = await db.collection("users").listDocuments();
+      for (const userRef of userRefs) {
+        const uid = userRef.id;
+        const contactsSnap = await db.collection(`users/${uid}/contacts`).get();
+        const batch = db.batch();
+        let changes = 0;
+
+        for (const doc of contactsSnap.docs) {
+          const c = doc.data() as any;
+          const update: Record<string, unknown> = {};
+
+          if (c.lastContactDate) {
+            const overdue = businessDaysSince(c.lastContactDate) > FOLLOWUP_THRESHOLD_DAYS;
+            if (overdue !== !!c.needsFollowup) update.needsFollowup = overdue;
+          }
+
+          if (
+            c.proposalStatus === "pending" &&
+            c.proposalSentDate &&
+            businessDaysSince(c.proposalSentDate) > FOLLOWUP_THRESHOLD_DAYS
+          ) {
+            update.proposalStatus = "awaiting_response";
+            update.urgent = true;
+          }
+
+          if (Object.keys(update).length) {
+            batch.update(doc.ref, update);
+            changes++;
+          }
+        }
+
+        if (changes) await batch.commit();
+      }
+      console.log("autoFlagLeads completed");
+    } catch (err) {
+      console.error("autoFlagLeads failed:", err);
+      throw err;
+    }
+  }
+);
+
+/**
+ * Hourly intake-reminder check. For discovery-stage contacts who have not
+ * submitted the intake form, sends a branded reminder ~24h and ~12h before the
+ * call. "Submitted" is read straight from the intake sheet each run (single
+ * source of truth), so no per-contact completion flag to keep in sync. Sent
+ * flags on the contact stop the hourly cron from re-sending.
+ */
+export const checkIntakeReminders = onSchedule(
+  {
+    schedule: "0 * * * *",
+    timeZone: "America/New_York",
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET],
+  },
+  async () => {
+    try {
+      // listDocuments() enumerates user refs even when the users/{uid} parent
+      // doc is virtual (only subcollections written); .get() would return none.
+      const userRefs = await db.collection("users").listDocuments();
+      for (const userRef of userRefs) {
+        const uid = userRef.id;
+
+        // Emails that have already submitted the intake form.
+        let submitted = new Set<string>();
+        try {
+          const tokenSnap = await db.doc(`users/${uid}/private/gmail`).get();
+          const refresh = tokenSnap.exists ? (tokenSnap.data() as any).refreshToken : null;
+          if (refresh) {
+            const rows = await readIntakeRows(refresh);
+            submitted = new Set(rows.map((r) => r.email.trim().toLowerCase()).filter(Boolean));
+          }
+        } catch (err) {
+          console.error("intake sheet read failed for", uid, err);
+        }
+
+        const contactsSnap = await db.collection(`users/${uid}/contacts`).get();
+        for (const cdoc of contactsSnap.docs) {
+          const c = cdoc.data() as any;
+          if (c.stage !== "discovery" || !c.email || !c.discoveryDate) continue;
+          if (submitted.has(String(c.email).trim().toLowerCase())) continue;
+
+          const kind = dueReminder(hoursUntil(c.discoveryDate), !!c.reminder24hSent, !!c.reminder12hSent);
+          if (!kind) continue;
+
+          const when = todayOrTomorrow(c.discoveryDate);
+          const first = c.firstName || "there";
+          const { html, text } = brandedEmail({
+            heading: `Looking forward to ${when}`,
+            paragraphs: [
+              `Good morning ${first},`,
+              `Looking forward to meeting ${when}. Looks like the intake form isn't in yet, and that's alright. We'll go ahead with the call and cover the key pieces together live.`,
+              "Want to send it ahead anyway? Here's the link:",
+            ],
+            formUrl: INTAKE_FORM_URL,
+          });
+
+          try {
+            await sendEmail(c.email, `Your call with Cynthia Jones is ${when}`, text, html);
+            await cdoc.ref.update(kind === "24h" ? { reminder24hSent: true } : { reminder12hSent: true });
+          } catch (err) {
+            console.error("reminder email failed", err);
+          }
+        }
+      }
+      console.log("checkIntakeReminders completed");
+    } catch (err) {
+      console.error("checkIntakeReminders failed:", err);
+      throw err;
+    }
+  }
+);
+
+// Single-operator command center: the morning brief goes to this SMS gateway,
+// with the ranked detail living on the Deal Brief dashboard.
+const SMS_TO = "4048046654@vtext.com";
+const DEAL_BRIEF_URL = "https://www.thebuildersopsstudio.com/admin/#/deal-brief";
+
+/**
+ * Daily deal brief at 08:00 ET. Surfaces flagged leads as a concise text and
+ * links to the dashboard for the full, ranked view. Deterministic (no LLM):
+ * a template at SMS length is more reliable than a generated narrative.
+ */
+export const generateDailySMSBrief = onSchedule(
+  {
+    schedule: "0 8 * * *",
+    timeZone: "America/New_York",
+    region: "us-central1",
+    secrets: [RESEND_API_KEY],
+  },
+  async () => {
+    try {
+      // listDocuments() returns user refs even when the users/{uid} parent doc
+      // was never written (only subcollections exist), which .get() would skip.
+      const userRefs = await db.collection("users").listDocuments();
+      console.log(`generateDailySMSBrief: ${userRefs.length} user(s)`);
+      for (const userRef of userRefs) {
+        const contactsSnap = await userRef.collection("contacts").get();
+        const contacts = contactsSnap.docs.map((d) => d.data() as any);
+
+        const pending = contacts
+          .filter((c) => c.proposalStatus === "pending")
+          .sort((a, b) => (a.proposalSentDate ?? "").localeCompare(b.proposalSentDate ?? ""));
+        const awaiting = contacts.filter((c) => c.proposalStatus === "awaiting_response");
+        const followups = contacts.filter((c) => c.needsFollowup);
+
+        console.log(
+          `user ${userRef.id}: ${contacts.length} contacts, ${pending.length} pending, ${awaiting.length} awaiting, ${followups.length} followups`
+        );
+        if (!pending.length && !awaiting.length && !followups.length) continue;
+
+        // Carrier gateways truncate one long text at ~160 chars, so send a
+        // series of short, self-contained texts instead. The email subject
+        // shows as "(...)" on the phone, so we vary it as a per-message label
+        // (no "Deal Brief" repeated in the body) and put the link on its own.
+        const name = (c: any) => `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "a lead";
+        const days = (iso?: string) => (iso ? `${businessDaysSince(iso)}d` : "?d");
+        const money = (c: any) => (c.dealValue ? `, $${c.dealValue}` : "");
+        const today = new Date().toLocaleDateString("en-US", {
+          timeZone: "America/New_York",
+          month: "short",
+          day: "numeric",
+        });
+
+        const details: { subject: string; body: string }[] = [
+          ...pending.map((c) => ({
+            subject: "Pending proposal",
+            body: `${name(c)}: sent ${days(c.proposalSentDate)} ago${money(c)}. Follow up on it.`,
+          })),
+          ...awaiting.map((c) => ({
+            subject: "Awaiting reply",
+            body: `${name(c)}: ${days(c.proposalSentDate)} no response${money(c)}. Re-engage.`,
+          })),
+          ...followups.map((c) => ({
+            subject: "Follow-up due",
+            body: `${name(c)}: ${days(c.lastContactDate)} since contact${
+              c.meetingSource ? `, from ${c.meetingSource}` : ""
+            }. Reach out.`,
+          })),
+        ].slice(0, 12);
+
+        const messages = [
+          {
+            subject: "Deal Brief",
+            body: `${today}: ${pending.length} pending, ${awaiting.length} awaiting reply, ${followups.length} follow-ups.`,
+          },
+          ...details,
+          { subject: "Full board", body: DEAL_BRIEF_URL },
+        ];
+
+        for (const m of messages) {
+          console.log(`generateDailySMSBrief sending: (${m.subject}) ${m.body}`);
+          await sendEmailSMS(SMS_TO, m.subject, m.body);
+        }
+      }
+      console.log("generateDailySMSBrief completed");
+    } catch (err) {
+      console.error("generateDailySMSBrief failed:", err);
+      throw err;
+    }
+  }
+);
+
+/**
+ * Weekly events scan (Mondays 06:00 ET). Uses Claude's web search tool to find
+ * real, current networking events, conferences, and trainings that fit
+ * Cynthia's ICP, and writes a ranked list to each user's state for the Deal
+ * Brief dashboard. No fabricated events.
+ */
+export const syncEvents = onSchedule(
+  {
+    schedule: "0 6 * * 1",
+    timeZone: "America/New_York",
+    region: "us-central1",
+    secrets: [ANTHROPIC_API_KEY],
+    timeoutSeconds: 120,
+  },
+  async () => {
+    try {
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+      const system = `${BRAND_VOICE}
+
+Find upcoming events (next ~8 weeks) worth Cynthia's time: networking events where Black women entrepreneurs and small-business founders gather, plus operations, systems, and consulting conferences, trainings, and workshops. Atlanta-based or virtual. Use web search to find real, current events with real dates and links. Never invent an event, date, or URL.
+
+Return ONLY a JSON array: [{"name":"<event name>","date":"<YYYY-MM-DD or short range>","type":"Networking|Conference|Training","location":"<Atlanta, GA | Virtual | city>","url":"<registration or info link>","why":"<one sentence on the fit, no em dashes>"}]. 5 to 8 events, soonest first.`;
+
+      // web_search runs server-side; the tool type is newer than the pinned SDK
+      // types, so pass it untyped.
+      const tools = [{ type: "web_search_20260209", name: "web_search", max_uses: 8 }] as any;
+      const params = { model: "claude-opus-4-8", max_tokens: 4000, system, tools };
+
+      let messages: Anthropic.MessageParam[] = [
+        { role: "user", content: "Find this week's recommended events." },
+      ];
+      let response = await anthropic.messages.create({ ...params, messages });
+
+      // Continue the server-tool loop if it pauses at the iteration limit.
+      let guard = 0;
+      while (response.stop_reason === "pause_turn" && guard++ < 3) {
+        messages = [...messages, { role: "assistant", content: response.content }];
+        response = await anthropic.messages.create({ ...params, messages });
+      }
+
+      const extractText = (resp: any) =>
+        (resp.content as any[])
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .trim();
+
+      const parseEvents = (t: string): any[] => {
+        try {
+          const parsed = JSON.parse(t.slice(t.indexOf("["), t.lastIndexOf("]") + 1));
+          return (Array.isArray(parsed) ? parsed : []).filter(
+            (e) => e && typeof e.name === "string"
+          );
+        } catch {
+          return [];
+        }
+      };
+
+      const text = extractText(response);
+      let events = parseEvents(text);
+
+      // Web search sometimes makes Claude answer in prose. If nothing parsed,
+      // reformat its findings into strict JSON in a second, tool-free turn.
+      if (!events.length && text) {
+        const reformat = await anthropic.messages.create({
+          model: "claude-opus-4-8",
+          max_tokens: 2000,
+          system:
+            'Reformat the event notes into JSON. Output ONLY a JSON array, no prose, no markdown fences: [{"name":"","date":"","type":"","location":"","url":"","why":""}].',
+          messages: [{ role: "user", content: `Event notes:\n\n${text}` }],
+        });
+        events = parseEvents(extractText(reformat));
+      }
+
+      if (events.length) {
+        const userRefs = await db.collection("users").listDocuments();
+        const batch = db.batch();
+        for (const userRef of userRefs) {
+          batch.set(userRef.collection("state").doc("events"), {
+            events,
+            lastSync: new Date().toISOString(),
+          });
+        }
+        await batch.commit();
+      }
+      console.log(`syncEvents wrote ${events.length} events to users`);
+    } catch (err) {
+      console.error("syncEvents failed:", err);
+      throw err;
+    }
+  }
+);
+
+/**
  * Get Instagram OAuth URL for account connection.
  */
 export const instagramAuthUrl = onRequest(
-  { region: "us-central1", cors: CORS_ORIGINS },
+  { secrets: [SOCIAL_INSTAGRAM_APP_ID], region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
       console.log("instagramAuthUrl called");
@@ -852,7 +1200,12 @@ export const instagramAuthUrl = onRequest(
       const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/instagramOauthCallback";
       const state = uid;
 
-      const url = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_insights&response_type=code&state=${state}`;
+      // Instagram API with Instagram Login authorizes at www.instagram.com.
+      // Scope is limited to what the dashboard reads; broaden later once the
+      // app has those permissions approved.
+      // basic = profile + media; manage_insights = account reach metric.
+      const scope = "instagram_business_basic,instagram_business_manage_insights";
+      const url = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${state}`;
 
       console.log("Returning OAuth URL");
       res.json({ url });
@@ -870,7 +1223,7 @@ export const instagramAuthUrl = onRequest(
  * Handle Instagram OAuth callback and save access token.
  */
 export const instagramOauthCallback = onRequest(
-  { region: "us-central1", cors: CORS_ORIGINS },
+  { secrets: [SOCIAL_INSTAGRAM_APP_ID, SOCIAL_INSTAGRAM_APP_SECRET], region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
       const code = req.query.code as string;
@@ -890,7 +1243,7 @@ export const instagramOauthCallback = onRequest(
         return;
       }
 
-      const tokenRes = await fetch("https://graph.instagram.com/v18.0/oauth/access_token", {
+      const tokenRes = await fetch("https://api.instagram.com/oauth/access_token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -903,22 +1256,25 @@ export const instagramOauthCallback = onRequest(
       });
 
       const tokenData = (await tokenRes.json()) as any;
+      // The Instagram Login response can come back flat or wrapped in data[].
+      const tokenInfo = Array.isArray(tokenData?.data) ? tokenData.data[0] : tokenData;
 
-      if (!tokenData.access_token) {
-        res.status(400).json({ error: "Failed to get access token" });
+      if (!tokenInfo?.access_token) {
+        console.error("Instagram token exchange failed:", JSON.stringify(tokenData));
+        res.redirect(`${SOCIAL_RETURN_URL}?error=instagram`);
         return;
       }
 
       await db.doc(`users/${state}/integrations/instagram`).set({
-        accessToken: tokenData.access_token,
-        userId: tokenData.user_id,
+        accessToken: tokenInfo.access_token,
+        userId: tokenInfo.user_id,
         connectedAt: new Date().toISOString(),
       });
 
-      res.redirect("/admin/#/social?connected=instagram");
+      res.redirect(`${SOCIAL_RETURN_URL}?connected=instagram`);
     } catch (err: any) {
       console.error("Instagram OAuth callback failed:", err);
-      res.status(500).json({ error: "Authentication failed" });
+      res.redirect(`${SOCIAL_RETURN_URL}?error=instagram`);
     }
   }
 );
@@ -932,40 +1288,79 @@ export const instagramInsights = onRequest(
     try {
       const { uid } = await requireUser(req);
 
-      const igDoc = await db.doc(`users/${uid}/integrations/instagram`).get();
+      const igRef = db.doc(`users/${uid}/integrations/instagram`);
+      const igDoc = await igRef.get();
       if (!igDoc.exists) {
         res.json({ connected: false, accounts: [] });
         return;
       }
 
-      const { accessToken, userId } = igDoc.data() as any;
+      const igData = igDoc.data() as any;
+      const accessToken = igData.accessToken;
 
       const businessAccountRes = await fetch(
-        `https://graph.instagram.com/v18.0/${userId}?fields=id,name,username,biography,followers_count,follows_count&access_token=${accessToken}`
+        `https://graph.instagram.com/v23.0/me?fields=id,username,followers_count,follows_count,media_count&access_token=${accessToken}`
       );
       const businessAccount = (await businessAccountRes.json()) as any;
-
-      const insightsRes = await fetch(
-        `https://graph.instagram.com/v18.0/${businessAccount.id}/insights?metric=impressions,reach,profile_views&period=day&access_token=${accessToken}`
-      );
-      const insights = (await insightsRes.json()) as any;
+      const followers = Number(businessAccount.followers_count) || 0;
 
       const mediaRes = await fetch(
-        `https://graph.instagram.com/v18.0/${businessAccount.id}/media?fields=id,caption,media_type,timestamp,like_count,comments_count&limit=10&access_token=${accessToken}`
+        `https://graph.instagram.com/v23.0/${businessAccount.id}/media?fields=id,caption,media_type,timestamp,like_count,comments_count&limit=25&access_token=${accessToken}`
       );
       const media = (await mediaRes.json()) as any;
+      const posts: any[] = media.data || [];
+
+      // Engagement rate: average interactions per post as a share of followers.
+      let engagement = "n/a";
+      if (followers > 0 && posts.length > 0) {
+        const interactions = posts.reduce(
+          (sum, p) => sum + (p.like_count || 0) + (p.comments_count || 0),
+          0
+        );
+        engagement = `${((interactions / posts.length / followers) * 100).toFixed(1)}%`;
+      }
+
+      // Accounts reached over the last 28 days. Requires the
+      // instagram_business_manage_insights scope; degrade if not granted yet.
+      let reach = "n/a";
+      try {
+        const reachRes = await fetch(
+          `https://graph.instagram.com/v23.0/${businessAccount.id}/insights?metric=reach&period=days_28&metric_type=total_value&access_token=${accessToken}`
+        );
+        const reachData = (await reachRes.json()) as any;
+        const metric = reachData?.data?.[0];
+        const value = metric?.total_value?.value ?? metric?.values?.[0]?.value ?? null;
+        if (value != null) reach = formatCompact(Number(value));
+        else console.warn("Instagram reach unavailable:", JSON.stringify(reachData));
+      } catch (e) {
+        console.warn("Instagram reach fetch failed:", e);
+      }
+
+      // Follower growth vs a stored snapshot, rolled forward roughly daily so
+      // the number becomes real day-over-day change as history accumulates.
+      let growth = "n/a";
+      const now = Date.now();
+      const snapshot = igData.followerSnapshot as { count: number; ts: number } | undefined;
+      if (snapshot && snapshot.count > 0) {
+        const delta = ((followers - snapshot.count) / snapshot.count) * 100;
+        growth = `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`;
+      }
+      if (!snapshot || now - snapshot.ts > 20 * 60 * 60 * 1000) {
+        await igRef.set({ followerSnapshot: { count: followers, ts: now } }, { merge: true });
+      }
 
       res.json({
         connected: true,
         account: {
           platform: "Instagram",
           username: businessAccount.username,
-          followers: businessAccount.followers_count,
-          engagement: "8.2%",
-          reach: "12.5K",
-          growth: "+2.1%",
+          followers,
+          engagement,
+          reach,
+          growth,
         },
-        topPosts: (media.data || [])
+        topPosts: posts
+          .slice()
           .sort((a: any, b: any) => (b.like_count || 0) - (a.like_count || 0))
           .slice(0, 3)
           .map((post: any) => ({
@@ -1001,7 +1396,7 @@ export const disconnectInstagram = onRequest(
  * Get LinkedIn OAuth URL for account connection.
  */
 export const linkedinAuthUrl = onRequest(
-  { region: "us-central1", cors: CORS_ORIGINS },
+  { secrets: [SOCIAL_LINKEDIN_CLIENT_ID], region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
       const { uid } = await requireUser(req);
@@ -1016,7 +1411,8 @@ export const linkedinAuthUrl = onRequest(
       const redirectUri = "https://us-central1-the-builders-ops-studio.cloudfunctions.net/linkedinOauthCallback";
       const state = uid;
 
-      const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=r_liteprofile%20r_emailaddress%20w_member_social`;
+      // OpenID Connect scopes (the legacy r_liteprofile/r_emailaddress are retired).
+      const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid%20profile%20email`;
 
       res.json({ url });
     } catch (err: any) {
@@ -1030,7 +1426,7 @@ export const linkedinAuthUrl = onRequest(
  * Handle LinkedIn OAuth callback and save access token.
  */
 export const linkedinOauthCallback = onRequest(
-  { region: "us-central1", cors: CORS_ORIGINS },
+  { secrets: [SOCIAL_LINKEDIN_CLIENT_ID, SOCIAL_LINKEDIN_CLIENT_SECRET], region: "us-central1", cors: CORS_ORIGINS },
   async (req, res) => {
     try {
       const code = req.query.code as string;
@@ -1065,7 +1461,8 @@ export const linkedinOauthCallback = onRequest(
       const tokenData = (await tokenRes.json()) as any;
 
       if (!tokenData.access_token) {
-        res.status(400).json({ error: "Failed to get access token" });
+        console.error("LinkedIn token exchange failed:", JSON.stringify(tokenData));
+        res.redirect(`${SOCIAL_RETURN_URL}?error=linkedin`);
         return;
       }
 
@@ -1074,10 +1471,10 @@ export const linkedinOauthCallback = onRequest(
         connectedAt: new Date().toISOString(),
       });
 
-      res.redirect("/admin/#/social?connected=linkedin");
+      res.redirect(`${SOCIAL_RETURN_URL}?connected=linkedin`);
     } catch (err: any) {
       console.error("LinkedIn OAuth callback failed:", err);
-      res.status(500).json({ error: "Authentication failed" });
+      res.redirect(`${SOCIAL_RETURN_URL}?error=linkedin`);
     }
   }
 );
@@ -1099,28 +1496,32 @@ export const linkedinInsights = onRequest(
 
       const { accessToken } = liDoc.data() as any;
 
-      const profileRes = await fetch("https://api.linkedin.com/v2/me", {
+      // OpenID Connect userinfo returns identity claims (name, email, picture).
+      const profileRes = await fetch("https://api.linkedin.com/v2/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const profile = (await profileRes.json()) as any;
+      const name =
+        profile.name ||
+        [profile.given_name, profile.family_name].filter(Boolean).join(" ") ||
+        "LinkedIn";
 
+      // Follower count, reach, engagement, and post analytics are not available
+      // for a personal profile through the consumer API. They require the
+      // Marketing / Community Management APIs on a Company Page (LinkedIn
+      // approval required), so we show identity now and leave metrics blank
+      // rather than fabricate numbers.
       res.json({
         connected: true,
         account: {
           platform: "LinkedIn",
-          username: `${profile.localizedFirstName} ${profile.localizedLastName}`,
-          followers: "2.4K",
-          engagement: "5.1%",
-          reach: "8.2K",
-          growth: "+1.3%",
+          username: name,
+          followers: "n/a",
+          engagement: "n/a",
+          reach: "n/a",
+          growth: "n/a",
         },
-        topPosts: [
-          {
-            title: "Operations systems for founders",
-            metric: "342 likes, 24 comments",
-            pillar: "Article",
-          },
-        ],
+        topPosts: [],
       });
     } catch (err: any) {
       console.error("LinkedIn insights failed:", err);

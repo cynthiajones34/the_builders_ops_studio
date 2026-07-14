@@ -77,6 +77,16 @@ export default function Social() {
     }
   }
 
+  async function disconnectAccount(platform: string) {
+    if (!confirm(`Disconnect ${platform}? You can reconnect any time.`)) return;
+    try {
+      await callApi(`disconnect${platform}`);
+      await loadSocialData();
+    } catch (err) {
+      setError(`Couldn't disconnect ${platform}. Try again.`);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <SectionTitle
@@ -131,6 +141,12 @@ export default function Social() {
                 <span>Engagement {a.engagement}</span>
                 <span>Reach {a.reach}</span>
               </div>
+              <button
+                onClick={() => disconnectAccount(a.platform)}
+                className="mt-3 text-[11px] text-brown-mid underline underline-offset-2 hover:text-copper"
+              >
+                Disconnect
+              </button>
             </Card>
           ))}
         </div>

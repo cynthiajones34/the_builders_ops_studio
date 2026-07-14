@@ -35,6 +35,23 @@ type ActionModal = {
   prospectName: string;
 };
 
+// Readiness from real prospect signals: ICP fit weighted, plus pain signals
+// (capped). No proposal/deal data exists yet at the prospect stage, so we rank
+// on what the SDR agent actually gathered rather than invent fields.
+function readiness(p: ProspectWithOutreach): {
+  score: number;
+  label: string;
+  tone: "positive" | "clay" | "warning";
+} {
+  const icp = p.icp_fit?.toLowerCase();
+  const icpScore = icp === "yes" ? 2 : icp === "no" ? 0 : 1;
+  const painScore = Math.min(p.pain_signals?.length ?? 0, 3);
+  const score = icpScore * 2 + painScore;
+  if (score >= 5) return { score, label: "Hot", tone: "positive" };
+  if (score >= 3) return { score, label: "Warm", tone: "clay" };
+  return { score, label: "Cool", tone: "warning" };
+}
+
 export default function Pipeline() {
   const { user } = useAuth();
   const [prospects, setProspects] = useState<ProspectWithOutreach[]>([]);
@@ -73,7 +90,11 @@ export default function Pipeline() {
       outreach: outreachLogs.find((o) => o.prospect_id === p.prospect_id),
     }))
     .filter((p) => p.outreach && p.outreach.outcome === "no_reply")
-    .sort((a, b) => (b.outreach?.log_id || "").localeCompare(a.outreach?.log_id || ""));
+    .sort((a, b) => {
+      const byReadiness = readiness(b).score - readiness(a).score;
+      if (byReadiness !== 0) return byReadiness;
+      return (b.outreach?.log_id || "").localeCompare(a.outreach?.log_id || "");
+    });
 
   async function handleApprove() {
     if (!user || !actionModal.prospectId) return;
@@ -154,7 +175,7 @@ export default function Pipeline() {
     <div className="mx-auto max-w-7xl">
       <SectionTitle
         title="Outreach Approval"
-        sub="Review prospect research and drafted messages from the BOS SDR agent."
+        sub="Review prospect research and drafted messages from the BOS SDR agent, ranked by readiness (ICP fit and pain signals)."
         right={
           <Button variant="secondary">
             <Bot size={15} /> SDR Agent: active
@@ -187,6 +208,7 @@ export default function Pipeline() {
           {pendingOutreach.map((prospect) => {
             const icpStatus = prospect.icp_fit?.toLowerCase() || "unclear";
             const icpColor = icpStatus === "yes" ? "positive" : icpStatus === "no" ? "warning" : "clay";
+            const r = readiness(prospect);
             return (
               <Card key={prospect.outreach?.log_id} className={`border-l-4 ${
                 icpStatus === "yes" ? "border-l-positive bg-positive/5" :
@@ -200,6 +222,7 @@ export default function Pipeline() {
                       <Badge tone={icpColor}>
                         {icpStatus === "yes" ? "✓ ICP Match" : icpStatus === "no" ? "✗ Not ICP" : "? Unclear"}
                       </Badge>
+                      <Badge tone={r.tone}>{r.label} lead</Badge>
                       {prospect.linkedin_url && (
                         <a href={prospect.linkedin_url} target="_blank" rel="noreferrer" className="text-clay hover:text-copper">
                           <ExternalLink size={14} />

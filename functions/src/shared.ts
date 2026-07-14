@@ -11,6 +11,7 @@ export const db = getFirestore();
 export const ALLOWED_EMAILS = [
   "cynthia@thebuildersopsstudio.com",
   "cynthiajones34@gmail.com",
+  "cynthiadjones98@gmail.com",
 ];
 
 // Browser origins allowed to call the API. The functions sit behind Firebase

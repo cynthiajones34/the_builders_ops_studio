@@ -12,6 +12,7 @@ import {
   Sparkles,
   Target,
   FileBarChart,
+  ClipboardList,
 } from "lucide-react";
 
 import Dashboard from "./modules/Dashboard";
@@ -26,6 +27,7 @@ import Knowledge from "./modules/Knowledge";
 import Assistant from "./modules/Assistant";
 import Opportunities from "./modules/Opportunities";
 import Reports from "./modules/Reports";
+import DealBriefDashboard from "./modules/DealBriefDashboard";
 
 export type Section = {
   path: string;
@@ -40,6 +42,7 @@ export const sections: Section[] = [
   { path: "/assistant", label: "AI Assistant", group: "Command", icon: Sparkles, Component: Assistant },
   { path: "/opportunities", label: "Opportunity Engine", group: "Command", icon: Target, Component: Opportunities },
   { path: "/reports", label: "Intelligence Reports", group: "Command", icon: FileBarChart, Component: Reports },
+  { path: "/deal-brief", label: "Deal Brief", group: "Command", icon: ClipboardList, Component: DealBriefDashboard },
 
   { path: "/content", label: "Content Studio", group: "Create & Grow", icon: PenLine, Component: Content },
   { path: "/social", label: "Social Command", group: "Create & Grow", icon: Share2, Component: Social },
