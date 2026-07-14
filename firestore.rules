@@ -46,6 +46,17 @@ service cloud.firestore {
       allow read: if authorized() && request.auth.uid == uid;
     }
 
+    // SDR agent prospects — authorized users can read and update status.
+    match /prospects/{doc} {
+      allow read: if authorized();
+      allow update: if authorized();
+    }
+
+    // Outreach log — read-only for the UI.
+    match /outreach_log/{doc} {
+      allow read: if authorized();
+    }
+
     // Refresh tokens (users/{uid}/private/**), oauthStates/**, and anything
     // else default to deny for clients: no rule grants access.
   }
