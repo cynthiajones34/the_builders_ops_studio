@@ -180,6 +180,7 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
   min-height: 600px;
   position: relative;
   overflow: hidden;
+  background: var(--charcoal);
 }
 .hero-photo {
   position: absolute;
@@ -189,11 +190,6 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
   object-fit: contain;
   object-position: 100% 100%;
   pointer-events: none;
-}
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, rgba(44,32,20,0.8) 0%, rgba(44,32,20,0.35) 26%, rgba(44,32,20,0) 46%);
 }
 .hero-content {
   position: relative;
@@ -774,7 +770,6 @@ footer {
 <!-- ── HERO ── -->
 <section class="hero" aria-label="Hero">
   <img src="cynthia-headshot.png" alt="Cynthia Jones" class="hero-photo">
-  <div class="hero-overlay" aria-hidden="true"></div>
   <div class="hero-content">
     <p class="eyebrow">Operations Consulting for Women-Led Businesses</p>
     <h1>Build the business that runs <em>without you.</em></h1>
