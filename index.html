@@ -86,7 +86,10 @@ nav.scrolled {
   justify-content: space-between;
   align-items: center;
 }
-.nav-logo img { height: 100px; display: block; }
+.nav-logo img { height: 100px; display: block; transition: filter 0.3s ease; }
+nav:not(.scrolled) .nav-logo img {
+  filter: brightness(0) saturate(100%) invert(78%) sepia(32%) saturate(524%) hue-rotate(5deg) brightness(1.05);
+}
 .nav-links {
   display: flex;
   align-items: center;
