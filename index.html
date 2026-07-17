@@ -197,7 +197,7 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(44,32,20,0.85) 46%, rgba(44,32,20,0) 46%);
+  background: rgba(44,32,20,0.85);
 }
 .hero-content {
   position: relative;
@@ -730,9 +730,10 @@ footer {
   .nav-links, nav > .nav-inner > .nav-cta { display: none; }
   .nav-hamburger { display: block; }
 
-  .hero { min-height: 520px; }
-  .hero-photo { height: 560px; }
-  .hero-content { padding: 7rem 1.25rem 3rem; }
+  .hero { min-height: auto; display: flex; flex-direction: column; }
+  .hero-overlay { display: none; }
+  .hero-content { position: static; padding: 5rem 1.25rem 2.5rem; background: var(--deep); }
+  .hero-photo { position: static; width: 100%; height: 320px; object-fit: cover; object-position: center top; }
 
   .stats-inner { padding: 4.5rem 1.25rem; }
   .client-strip { padding: 2rem 1.25rem; }
@@ -777,8 +778,8 @@ footer {
 
 <!-- ── HERO ── -->
 <section class="hero" aria-label="Hero">
-  <img src="cynthia-headshot.png" alt="Cynthia Jones" class="hero-photo">
   <div class="hero-overlay" aria-hidden="true"></div>
+  <img src="cynthia-headshot.png" alt="Cynthia Jones" class="hero-photo">
   <div class="hero-content">
     <p class="eyebrow">Operations Consulting for Women-Led Businesses</p>
     <h1>Build the business that runs <em>without you.</em></h1>
