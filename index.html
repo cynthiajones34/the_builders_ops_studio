@@ -177,13 +177,13 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
 }
 
 /* ── HERO ── */
+.hero-band { background: var(--deep); }
 .hero {
   max-width: 1280px;
   margin: 0 auto;
   min-height: 600px;
   position: relative;
   overflow: hidden;
-  background: var(--deep);
 }
 .hero-photo {
   position: absolute;
@@ -197,7 +197,7 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: var(--deep);
+  background: linear-gradient(90deg, var(--deep) 38%, transparent 60%);
 }
 .hero-content {
   position: relative;
@@ -777,9 +777,10 @@ footer {
 </div>
 
 <!-- ── HERO ── -->
+<div class="hero-band">
 <section class="hero" aria-label="Hero">
-  <div class="hero-overlay" aria-hidden="true"></div>
   <img src="cynthia-headshot.png" alt="Cynthia Jones" class="hero-photo">
+  <div class="hero-overlay" aria-hidden="true"></div>
   <div class="hero-content">
     <p class="eyebrow">Operations Consulting for Women-Led Businesses</p>
     <h1>Build the business that runs <em>without you.</em></h1>
@@ -790,6 +791,7 @@ footer {
     </div>
   </div>
 </section>
+</div>
 
 <!-- ── STATS BAND ── -->
 <div class="stats-band">
