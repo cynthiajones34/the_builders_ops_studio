@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0.8 (2026-07-18)
+
+- Fix hero logo gold color: CSS filter now produces a perceptual match to `--gold: #D9B98A`, matching the "Book a Discovery Call" button
+- Add `aria-label` to lead capture form inputs so screen readers can identify the First Name and Email fields (WCAG 1.3.1)
+
 ## 1.1.0.7 (2026-06-21)
 
 - Mobile nav: the menu toggle now switches to an X (✕) while the menu is open and back to the hamburger (☰) when closed
