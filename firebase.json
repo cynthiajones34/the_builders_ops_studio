@@ -13,27 +13,10 @@
       "functions-leadmagnet/**"
     ],
     "rewrites": [
-      { "source": "/api/askAdvisor", "function": { "functionId": "askAdvisor", "region": "us-central1" } },
-      { "source": "/api/dailyBriefing", "function": { "functionId": "dailyBriefing", "region": "us-central1" } },
-      { "source": "/api/findOpportunities", "function": { "functionId": "findOpportunities", "region": "us-central1" } },
-      { "source": "/api/generateReport", "function": { "functionId": "generateReport", "region": "us-central1" } },
-      { "source": "/api/generateProjects", "function": { "functionId": "generateProjects", "region": "us-central1" } },
-      { "source": "/api/generateContent", "function": { "functionId": "generateContent", "region": "us-central1" } },
-      { "source": "/api/draftContent", "function": { "functionId": "draftContent", "region": "us-central1" } },
       { "source": "/api/gmailAuthUrl", "function": { "functionId": "gmailAuthUrl", "region": "us-central1" } },
       { "source": "/api/gmailOauthCallback", "function": { "functionId": "gmailOauthCallback", "region": "us-central1" } },
-      { "source": "/api/syncGmail", "function": { "functionId": "syncGmail", "region": "us-central1" } },
-      { "source": "/api/syncMeetings", "function": { "functionId": "syncMeetings", "region": "us-central1" } },
       { "source": "/api/meetingPrep", "function": { "functionId": "meetingPrep", "region": "us-central1" } },
       { "source": "/api/fetchIntakeResponses", "function": { "functionId": "fetchIntakeResponses", "region": "us-central1" } },
-      { "source": "/api/instagramAuthUrl", "function": { "functionId": "instagramAuthUrl", "region": "us-central1" } },
-      { "source": "/api/instagramOauthCallback", "function": { "functionId": "instagramOauthCallback", "region": "us-central1" } },
-      { "source": "/api/instagramInsights", "function": { "functionId": "instagramInsights", "region": "us-central1" } },
-      { "source": "/api/disconnectInstagram", "function": { "functionId": "disconnectInstagram", "region": "us-central1" } },
-      { "source": "/api/linkedinAuthUrl", "function": { "functionId": "linkedinAuthUrl", "region": "us-central1" } },
-      { "source": "/api/linkedinOauthCallback", "function": { "functionId": "linkedinOauthCallback", "region": "us-central1" } },
-      { "source": "/api/linkedinInsights", "function": { "functionId": "linkedinInsights", "region": "us-central1" } },
-      { "source": "/api/joinSprintWaitlist", "function": { "functionId": "joinSprintWaitlist", "region": "us-central1" } },
       { "source": "/admin/**", "destination": "/admin/index.html" }
     ]
   },
