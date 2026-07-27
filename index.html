@@ -646,6 +646,45 @@ nav.scrolled .nav-hamburger { color: var(--deep); }
 }
 .lead-confirm.visible { display: block; }
 
+/* ── LEAD MAGNET POPUP ── */
+.lm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(44,44,40,0.72);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.lm-overlay.open { display: flex; }
+.lm-modal {
+  background: var(--warm-white);
+  max-width: 520px;
+  width: 100%;
+  padding: 3rem 2.5rem 2.5rem;
+  position: relative;
+  text-align: center;
+}
+.lm-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 1.1rem;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+}
+.lm-close:hover { color: var(--deep); }
+.lm-modal .section-h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: 0.85rem; }
+.lm-modal .section-body { margin: 0 auto 1.75rem; }
+@media (max-width: 480px) {
+  .lm-modal { padding: 2.5rem 1.5rem 2rem; }
+}
+
 /* ── FINAL CTA ── */
 .final-cta {
   background: var(--charcoal);
@@ -997,6 +1036,22 @@ footer {
   </div>
 </footer>
 
+<!-- ── LEAD MAGNET POPUP ── -->
+<div id="lm-overlay" class="lm-overlay" role="dialog" aria-modal="true" aria-label="Free operational audit">
+  <div class="lm-modal">
+    <button class="lm-close" id="lm-close" aria-label="Close">&times;</button>
+    <p class="section-eyebrow">Free Resource</p>
+    <h2 class="section-h2">Find the gaps <em>costing you time.</em></h2>
+    <p class="section-body">The Operational Gaps Self-Audit is a free checklist that helps you identify exactly where your business is leaking time, money, and energy, so you know what to fix first.</p>
+    <form id="pop-form" class="lead-form">
+      <input type="text" class="lead-input" id="pop-first" name="firstName" placeholder="First name" autocomplete="given-name" aria-label="First name">
+      <input type="email" class="lead-input" id="pop-email" name="email" placeholder="Email address" required autocomplete="email" aria-label="Email address">
+      <button type="submit" class="lead-submit" id="pop-btn">Send Me the Audit &rarr;</button>
+    </form>
+    <p class="lead-confirm" id="pop-confirm">Check your inbox. The audit is on its way.</p>
+  </div>
+</div>
+
 <script>
 (function () {
   const nav = document.getElementById('site-nav');
@@ -1048,7 +1103,7 @@ footer {
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(function(el) { revealObs.observe(el); });
 
-  // lead magnet form
+  // lead magnet form (inline section)
   document.getElementById('audit-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     var btn = document.getElementById('audit-btn');
@@ -1067,6 +1122,39 @@ footer {
     } catch(_) {}
     form.style.display = 'none';
     document.getElementById('audit-confirm').classList.add('visible');
+  });
+
+  // lead magnet popup
+  var overlay = document.getElementById('lm-overlay');
+  function closePopup() {
+    overlay.classList.remove('open');
+    sessionStorage.setItem('lm-seen', '1');
+  }
+  document.getElementById('lm-close').addEventListener('click', closePopup);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closePopup(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePopup(); });
+  if (!sessionStorage.getItem('lm-seen')) {
+    setTimeout(function() { overlay.classList.add('open'); }, 2000);
+  }
+  document.getElementById('pop-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('pop-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    try {
+      await fetch('https://us-central1-the-builders-ops-studio.cloudfunctions.net/sendAudit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: document.getElementById('pop-first').value,
+          email: document.getElementById('pop-email').value
+        })
+      });
+    } catch(_) {}
+    document.getElementById('pop-form').style.display = 'none';
+    document.getElementById('pop-confirm').classList.add('visible');
+    sessionStorage.setItem('lm-seen', '1');
+    setTimeout(closePopup, 3000);
   });
 })();
 </script>

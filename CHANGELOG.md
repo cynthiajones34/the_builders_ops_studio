@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0.9 (2026-07-26)
+
+- Add lead magnet popup: fires 2s after page load, shows Operational Gaps Self-Audit with first name + email form, submits to existing sendAudit Cloud Function, dismissed with X/backdrop/Escape, sessionStorage prevents repeat showing
+
 ## 1.1.0.8 (2026-07-18)
 
 - Fix hero logo gold color: CSS filter now produces a perceptual match to `--gold: #D9B98A`, matching the "Book a Discovery Call" button
