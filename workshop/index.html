@@ -78,7 +78,7 @@
         publishable-key="pk_live_51Tp6OM1F4vRKkMzaDQsDTX38dVvl961QSu1CdBQbOBRKfYiGz966Vcp3TEBaB9Etj1Qv6XhMiC4SClvFMFtxPbob00oVBqONPA"
       ></stripe-buy-button>
     </div>
-    <p class="note">You'll leave with at least one thing you can build this week. Spot confirmed on payment.</p>
+    <p class="note">You'll leave with at least one thing you can build this week.<br>Spot confirmed on payment.</p>
   </div>
 
   <div class="card">
@@ -103,7 +103,7 @@
     btn.disabled = true;
     btn.textContent = 'Sending...';
     try {
-      const res = await fetch('/api/joinWorkshopWaitlist', {
+      const res = await fetch('https://the-builders-ops-studio.web.app/api/joinWorkshopWaitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
