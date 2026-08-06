@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1.0 (2026-08-06)
+
+- Add Privacy Policy and Terms of Service pages, both linked from the site footer. Visitors can now review data practices and service terms directly from any page.
+
 ## 1.1.0.9 (2026-07-26)
 
 - Add lead magnet popup: fires 2s after page load, shows Operational Gaps Self-Audit with first name + email form, submits to existing sendAudit Cloud Function, dismissed with X/backdrop/Escape, sessionStorage prevents repeat showing
