@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://www.thebuildersopsstudio.com/terms.html">
 <link rel="icon" type="image/png" href="favicon.png" />
 <script>document.documentElement.classList.add('js');</script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" crossorigin="anonymous">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -201,7 +201,7 @@
 
 <footer>
   <div class="footer-inner">
-    <a href="/" class="footer-wordmark">The Builders' Ops Studio</a>
+    <a href="index.html" class="footer-wordmark">The Builders' Ops Studio</a>
     <ul class="footer-links">
       <li><a href="index.html#pricing">Services</a></li>
       <li><a href="index.html#work">Work</a></li>
@@ -217,9 +217,18 @@
 (function() {
   var toggle = document.getElementById('nav-toggle');
   var links = document.getElementById('nav-links');
+  function closeMenu() {
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
   toggle.addEventListener('click', function() {
     var open = links.classList.toggle('open');
     toggle.setAttribute('aria-expanded', open);
+  });
+  links.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMenu(); });
+  document.addEventListener('click', function(e) {
+    if (!links.contains(e.target) && e.target !== toggle) closeMenu();
   });
 })();
 </script>

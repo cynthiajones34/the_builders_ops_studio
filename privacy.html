@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://www.thebuildersopsstudio.com/privacy.html">
 <link rel="icon" type="image/png" href="favicon.png" />
 <script>document.documentElement.classList.add('js');</script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" crossorigin="anonymous">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -170,8 +170,7 @@
   </ul>
   <p>We also collect limited information automatically when you visit our site:</p>
   <ul>
-    <li>Pages visited, referring URL, browser type, and general location (city/region level) via Google Analytics.</li>
-    <li>Standard server logs (IP address, timestamp, page requested).</li>
+    <li>Standard server logs (IP address, timestamp, page requested) via Firebase Hosting.</li>
   </ul>
 
   <h2>How We Use Your Information</h2>
@@ -190,7 +189,7 @@
   </ul>
 
   <h2>Cookies</h2>
-  <p>We use Google Analytics cookies to understand aggregate site usage. You can disable cookies in your browser settings or opt out of Google Analytics at <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">tools.google.com/dlpage/gaoptout</a>.</p>
+  <p>This site does not use tracking or analytics cookies. Standard session cookies required for site functionality may be set by your browser automatically.</p>
 
   <h2>Data Retention</h2>
   <p>We retain your information as long as necessary to provide our services or as required by law. You may request deletion at any time by emailing us.</p>
@@ -210,7 +209,7 @@
 
 <footer>
   <div class="footer-inner">
-    <a href="/" class="footer-wordmark">The Builders' Ops Studio</a>
+    <a href="index.html" class="footer-wordmark">The Builders' Ops Studio</a>
     <ul class="footer-links">
       <li><a href="index.html#pricing">Services</a></li>
       <li><a href="index.html#work">Work</a></li>
@@ -226,9 +225,18 @@
 (function() {
   var toggle = document.getElementById('nav-toggle');
   var links = document.getElementById('nav-links');
+  function closeMenu() {
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
   toggle.addEventListener('click', function() {
     var open = links.classList.toggle('open');
     toggle.setAttribute('aria-expanded', open);
+  });
+  links.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', closeMenu); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMenu(); });
+  document.addEventListener('click', function(e) {
+    if (!links.contains(e.target) && e.target !== toggle) closeMenu();
   });
 })();
 </script>
