@@ -15,6 +15,15 @@ const ALLOWED_ORIGINS = ["https://www.thebuildersopsstudio.com", "https://thebui
 
 const isValidEmail = (e) => typeof e === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+// ponytail: in-memory per-instance, 10/hr per IP — use Firestore key if multi-instance abuse matters
+const _rl = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const e = _rl.get(ip);
+  if (!e || now > e.r) { _rl.set(ip, { n: 1, r: now + 3_600_000 }); return false; }
+  return ++e.n > 10;
+}
+
 function buildEmail(to, firstName) {
   const name = (firstName || "").trim();
   const hi = name ? `Hi ${name},` : "Hi there,";
@@ -37,6 +46,9 @@ exports.sendAudit = onRequest(
   async (req, res) => {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     if (req.body && req.body._gotcha) return res.json({ ok: true }); // honeypot: pretend success
+
+    const ip = (String(req.headers["x-forwarded-for"] || req.ip || "")).split(",")[0].trim();
+    if (isRateLimited(ip)) return res.status(429).json({ error: "Too many requests. Please try again later." });
 
     const { email, first_name } = req.body || {};
     if (!isValidEmail(email)) return res.status(400).json({ error: "A valid email is required." });

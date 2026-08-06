@@ -2,6 +2,20 @@ import { onRequest } from "firebase-functions/https";
 import { db, CORS_ORIGINS } from "./shared";
 import { sendEmail, RESEND_API_KEY } from "./email";
 
+// ponytail: Firestore counter per IP+day, max 10/day — sufficient for a low-traffic waitlist
+async function checkRateLimit(ip: string, fn: string, max = 10): Promise<boolean> {
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `${fn}_${ip.replace(/[^a-z0-9]/gi, "_")}_${day}`;
+  return db.runTransaction(async (tx) => {
+    const ref = db.collection("rateLimits").doc(key);
+    const snap = await tx.get(ref);
+    const count = snap.exists ? ((snap.data() as any).count ?? 0) : 0;
+    if (count >= max) return false;
+    tx.set(ref, { count: count + 1, fn, day }, { merge: true });
+    return true;
+  });
+}
+
 const REGION = "us-central1";
 const OWNER_EMAIL = "cynthia@thebuildersopsstudio.com";
 
@@ -15,6 +29,8 @@ export const joinSprintWaitlist = onRequest(
   async (req, res) => {
     try {
       if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+      const ip = ((req.headers["x-forwarded-for"] as string | undefined) ?? req.ip ?? "").split(",")[0].trim();
+      if (!await checkRateLimit(ip, "waitlist")) { res.status(429).json({ error: "Too many requests. Please try again later." }); return; }
       const b = req.body ?? {};
       const t = (v: any) => (typeof v === "string" ? v.trim() : "");
       const name = t(b.name), email = t(b.email), business = t(b.business), gap = t(b.gap);

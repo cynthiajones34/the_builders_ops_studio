@@ -18,7 +18,7 @@ async function post(payload: Record<string, unknown>, to: string, subject: strin
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        Authorization: `Bearer ${RESEND_API_KEY.value()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
