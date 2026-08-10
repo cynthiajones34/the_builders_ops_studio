@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-10
+
+- Privacy Policy and Terms of Service pages are now live on your website (PR #13). Both are linked in the site footer so visitors can find them from any page. Having these pages in place builds trust with potential clients and meets the legal requirements most data privacy regulations expect.
+
 ## 1.1.1.0 (2026-08-06)
 
 - Add Privacy Policy and Terms of Service pages, both linked from the site footer. Visitors can now review data practices and service terms directly from any page.
